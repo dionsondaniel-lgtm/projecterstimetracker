@@ -394,21 +394,19 @@ input[type="email"]:focus {
   }
 }
 
+/* Adjust background container style size as needed */
 .admin-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  height: 70vh;
-  padding: 40px;
+  min-height: 100vh; /* full height */
+  padding: 60px 20px;
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(33, 150, 243, 0.2);
-  animation: fadeIn 0.8s ease forwards;
-
-  /* Animated gradient background */
   background: linear-gradient(270deg, #90caf9, #42a5f5, #1565c0);
   background-size: 600% 600%;
-  animation: gradientShift 15s ease infinite;
+  animation: gradientShift 15s ease infinite, fadeIn 0.8s ease forwards;
 }
 
 .admin-title {
@@ -453,6 +451,46 @@ input[type="email"]:focus {
   box-shadow: 0 12px 25px rgba(13, 71, 161, 0.6);
   transform: translateY(-8px);
 }
+
+.dropdown-container button {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 6px 15px rgba(21, 101, 192, 0.4);
+  transition: background-color 0.3s ease;
+}
+
+.dropdown-container button:hover {
+  background-color: #0d47a1;
+  box-shadow: 0 12px 25px rgba(13, 71, 161, 0.6);
+}
+
+.dropdown-menu li:hover {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+}
+
+.hamburger-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  color: #1976d2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(25, 118, 210, 0.1);
+}
+
 
 /* Animations */
 @keyframes fadeIn {
@@ -499,6 +537,46 @@ input[type="email"]:focus {
     gap: 16px;
   }
 }
+
+.performance-metrics-title {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #212121;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.chart-wrapper {
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 800px;
+}
+
+.charts-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .charts-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .chart-wrapper {
+    flex: 1 1 45%;
+  }
+}
+
 
 /* === Dashboard Container === */
 .dashboard-container {
@@ -761,3 +839,10 @@ input[type="email"]:focus {
   font-weight: 600;
 }
 
+.select-user-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+}

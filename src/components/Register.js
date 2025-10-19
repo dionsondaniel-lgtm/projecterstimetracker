@@ -65,7 +65,7 @@ export default function Register({ onBack }) {
 
   return (
     <div className="register-container">
-      <h2 className="register-title">🏆 Register a New User</h2>
+      <h2 className="register-title">Register a New User</h2>
 
       <div className="input-row">
         <input
@@ -86,14 +86,14 @@ export default function Register({ onBack }) {
 
       <div className="buttons-row">
         <button className="register-btn" onClick={handleRegister} disabled={loading}>
-          {loading ? "⏳ Registering..." : "✅ Register"}
+          {loading ? "⏳ Registering..." : "Register"}
         </button>
         <button className="back-btn" onClick={onBack}>
-          🔙 Back
+          Back
         </button>
       </div>
 
-      <h3 style={{ color: "#2b6cb0", marginBottom: 20 }}>🧑‍💼 Registered Users</h3>
+      <h3 style={{ color: "#2b6cb0", marginBottom: 20 }}>Registered Users</h3>
       <ul className="users-list">
         {users.map((u) => (
           <li key={u.id} className="user-item">

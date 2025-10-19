@@ -237,155 +237,163 @@ const updateLog = async (log) => {
 };
 
   return (
-    <div className="container">
-      <h1>⏱️ Projecters Time Tracker ⏰</h1>
+  <div className="container">
+    <h1>Projecters Time Tracking Dashboard</h1>
 
-      <button className="btn-secondary" onClick={onBack} style={{ marginBottom: 20 }}>
-        ← Back to Admin
-      </button>
+    <button className="btn-secondary" onClick={onBack} style={{ marginBottom: 20 }}>
+      ← Return to Admin Panel
+    </button>
 
-      <div style={{ marginBottom: 15 }}>
-        <label htmlFor="user-select" style={{ fontWeight: "bold" }}>
-          Select User:
-        </label>
-        <select
-          id="user-select"
-          value={currentUserId}
-          onChange={(e) => setCurrentUserId(e.target.value)}
-          className="input-select"
-          style={{ marginLeft: 10 }}
-        >
-          <option value="">-- Select User --</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <button
-        className="btn-primary"
-        onClick={punchIn}
-        disabled={!currentUserId || loading}
-        style={{ marginBottom: 20 }}
+    <div style={{ marginBottom: 15 }}>
+      <label htmlFor="user-select" style={{ fontWeight: "bold" }}>
+        Select User:
+      </label>
+      <select
+        id="user-select"
+        value={currentUserId}
+        onChange={(e) => setCurrentUserId(e.target.value)}
+        className="input-select"
+        style={{ marginLeft: 10 }}
       >
-        🏆 Punch In
+        <option value="">-- Please select a user --</option>
+        {users.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <button
+      className="btn-primary"
+      onClick={punchIn}
+      disabled={!currentUserId || loading}
+      style={{ marginBottom: 20 }}
+    >
+      Punch In
+    </button>
+
+    <h3>Today's Logs — {today}</h3>
+    {logs.length === 0 ? (
+      <p className="empty-row">No logs recorded for today.</p>
+    ) : (
+      <table className="logs-table">
+        <thead>
+          <tr>
+            <th>Time In</th>
+            <th>Time Out</th>
+            <th>Break (mins)</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((log) => (
+            <tr key={log.id}>
+              <td>{formatTime(log.time_in)}</td>
+              <td>{formatTime(log.time_out)}</td>
+              <td>
+                <button
+                  className="btn-sm btn-info"
+                  onClick={() => setBreakTime(log)}
+                  title="Edit break duration"
+                >
+                  {log.break_time ?? 0}
+                </button>
+              </td>
+              <td>{log.status}</td>
+              <td>
+                {!log.time_out ? (
+                  <button
+                    className="btn-sm btn-danger"
+                    onClick={() => punchOut(log)}
+                    disabled={loading}
+                  >
+                    Punch Out
+                  </button>
+                ) : (
+                  <span>Completed</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+
+    <hr style={{ margin: "40px 0" }} />
+
+    <div style={{ marginBottom: 15 }}>
+      <button
+        className="btn-secondary"
+        onClick={async () => {
+          const nextState = !showAllLogs;
+          setShowAllLogs(nextState);
+
+          if (nextState) {
+            await fetchAllLogs(); // Refresh all logs when viewing
+          } else {
+            if (currentUserId) await fetchLogs(); // Refresh user logs when hiding
+          }
+        }}
+        style={{ marginRight: 10 }}
+      >
+        {showAllLogs ? "Hide All Logs" : "View All Logs"}
       </button>
 
-      <h3>User Logs for {today}</h3>
-      {logs.length === 0 ? (
-        <p className="empty-row">No logs today.</p>
-      ) : (
-        <table className="logs-table">
-          <thead>
-            <tr>
-              <th>Time In</th>
-              <th>Time Out</th>
-              <th>Break (mins)</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id}>
-                <td>{formatTime(log.time_in)}</td>
-                <td>{formatTime(log.time_out)}</td>
-                <td>
-                  <button
-                    className="btn-sm btn-info"
-                    onClick={() => setBreakTime(log)}
-                    title="Click to update break"
-                  >
-                    {log.break_time ?? 0}
-                  </button>
-                </td>
-                <td>{log.status}</td>
-                <td>
-                  {!log.time_out ? (
+      <button className="btn-primary" onClick={exportToExcel}>
+        Export Logs to Excel
+      </button>
+    </div>
+
+    {showAllLogs && (
+      <>
+        {allLogs.length === 0 ? (
+          <p className="empty-row">No log entries available.</p>
+        ) : (
+          <table className="logs-table" style={{ fontSize: "0.9rem" }}>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Date</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Break (mins)</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allLogs.map((log) => (
+                <tr key={log.id}>
+                  <td>{log.user_id?.name || log.user_id}</td>
+                  <td>{log.date}</td>
+                  <td>{formatTime(log.time_in)}</td>
+                  <td>{formatTime(log.time_out)}</td>
+                  <td>{log.break_time ?? 0}</td>
+                  <td>{log.status}</td>
+                  <td>
                     <button
                       className="btn-sm btn-danger"
-                      onClick={() => punchOut(log)}
-                      disabled={loading}
+                      onClick={() => deleteLog(log.id)}
+                      style={{ marginRight: 8 }}
                     >
-                      Punch Out
+                      Delete
                     </button>
-                  ) : (
-                    <span>Done</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <hr style={{ margin: "40px 0" }} />
-
-      <div style={{ marginBottom: 15 }}>
-        <button
-          className="btn-secondary"
-          onClick={() => setShowAllLogs((prev) => !prev)}
-          style={{ marginRight: 10 }}
-        >
-          {showAllLogs ? "🙈 Hide All Logs" : "👁️ View All Logs"}
-        </button>
-
-        <button className="btn-primary" onClick={exportToExcel}>
-          📥 Download All Logs (Excel)
-        </button>
-      </div>
-
-      {showAllLogs && (
-        <>
-          {allLogs.length === 0 ? (
-            <p className="empty-row">No logs available.</p>
-          ) : (
-            <table className="logs-table" style={{ fontSize: "0.9rem" }}>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Date</th>
-                  <th>Time In</th>
-                  <th>Time Out</th>
-                  <th>Break (mins)</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                    <button
+                      className="btn-sm btn-secondary"
+                      onClick={() => updateLog(log)}
+                    >
+                      Update
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {allLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{log.user_id?.name || log.user_id}</td>
-                    <td>{log.date}</td>
-                    <td>{formatTime(log.time_in)}</td>
-                    <td>{formatTime(log.time_out)}</td>
-                    <td>{log.break_time ?? 0}</td>
-                    <td>{log.status}</td>
-                    <td>
-			  <button
-			    className="btn-sm btn-danger"
-			    onClick={() => deleteLog(log.id)}
-			    style={{ marginRight: 8 }}
-			  >
-			    🗑 Delete
-			  </button>
-			  <button
-			    className="btn-sm btn-secondary"
-			    onClick={() => updateLog(log)}
-			  >
-			    ✏️ Update
-			  </button>
-
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
-    </div>
-  );
+              ))}
+            </tbody>
+          </table>
+        )}
+      </>
+    )}
+  </div>
+);
 }

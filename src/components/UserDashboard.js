@@ -4,9 +4,10 @@ import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-export default function Dashboard({ onBack }) {
+export default function UsersDashboard({ onBack }) {
   const [users, setUsers] = useState([]);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [rememberUser, setRememberUser] = useState(false);
   const [logs, setLogs] = useState([]);
   const [allLogs, setAllLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,11 @@ export default function Dashboard({ onBack }) {
   const today = dayjs().format("YYYY-MM-DD");
 
   useEffect(() => {
+    const rememberedId = localStorage.getItem("rememberedUserDashboardId");
+    if (rememberedId) {
+      setCurrentUserId(rememberedId);
+      setRememberUser(true);
+    }
     fetchUsers();
     fetchAllLogs();
   }, []);
@@ -22,6 +28,14 @@ export default function Dashboard({ onBack }) {
     if (currentUserId) fetchLogs();
     else setLogs([]);
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (rememberUser && currentUserId) {
+      localStorage.setItem("rememberedUserDashboardId", currentUserId);
+    } else {
+      localStorage.removeItem("rememberedUserDashboardId");
+    }
+  }, [rememberUser, currentUserId]);
 
   async function fetchUsers() {
     const { data, error } = await supabase.from("users").select("*");
@@ -50,6 +64,94 @@ export default function Dashboard({ onBack }) {
     else setAllLogs(data);
   }
 
+  const formatTime = (time) => (time ? dayjs(time).format("HH:mm:ss") : "-");
+
+  const setBreakTime = async (log) => {
+    const input = prompt("Enter break time in minutes:", log.break_time ?? 0);
+    const breakTime = parseInt(input, 10);
+    if (isNaN(breakTime) || breakTime < 0) {
+      alert("Invalid break time.");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase
+      .from("logs")
+      .update({ break_time: breakTime })
+      .eq("id", log.id);
+    if (error) {
+      console.error("setBreakTime error:", error);
+      alert("Failed to set break time.");
+    } else {
+      await fetchLogs();
+    }
+    setLoading(false);
+  };
+
+  const punchIn = async () => {
+    if (!currentUserId) {
+      alert("Please select a user.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from("logs")
+        .select("*")
+        .eq("user_id", currentUserId)
+        .eq("date", today)
+        .is("time_out", null);
+
+      if (existingError) throw existingError;
+
+      if (existing.length > 0) {
+        alert("You already have an open session.");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.from("logs").insert([
+        {
+          user_id: currentUserId,
+          date: today,
+          time_in: new Date().toISOString(),
+          status: "Present",
+          break_time: 0,
+        },
+      ]);
+
+      if (error) throw error;
+
+      await fetchLogs();
+    } catch (err) {
+      console.error("Punch in error:", err);
+      alert("Punch in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const punchOut = async (log) => {
+    if (!log || log.time_out) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("logs")
+        .update({ time_out: new Date().toISOString() })
+        .eq("id", log.id);
+      if (error) throw error;
+      await fetchLogs();
+    } catch (err) {
+      console.error("Punch out error:", err);
+      alert("Punch out failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportToExcel = () => {
     if (allLogs.length === 0) {
       alert("No logs to export!");
@@ -59,8 +161,8 @@ export default function Dashboard({ onBack }) {
     const exportData = allLogs.map((log) => ({
       User: log.user_id?.name || log.user_id,
       Date: log.date,
-      "Time In": log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "-",
-      "Time Out": log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "-",
+      "Time In": formatTime(log.time_in),
+      "Time Out": formatTime(log.time_out),
       "Break (mins)": log.break_time ?? 0,
       Status: log.status,
     }));
@@ -74,31 +176,63 @@ export default function Dashboard({ onBack }) {
     saveAs(blob, `projecters_time_logs_${today}.xlsx`);
   };
 
-  // Your punchIn, punchOut, setBreakTime, formatTime functions remain unchanged
-
   return (
     <div className="dashboard-container">
-      <h1>⏱️ Projecters Time Tracker ⏰</h1>
+    <h1>Projecters Time Tracking Dashboard</h1>
 
       <button className="btn-back" onClick={onBack}>
         ← Back to Admin
       </button>
 
-      <div className="select-user-row">
-        <label htmlFor="user-select">Select User:</label>
-        <select
-          id="user-select"
-          value={currentUserId}
-          onChange={(e) => setCurrentUserId(e.target.value)}
-          className="input-select"
+      {/* Select user and remember */}
+      <div
+        className="select-user-row"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: "12px",
+          marginBottom: "20px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <label htmlFor="user-select" style={{ fontWeight: "bold" }}>
+            Select User:
+          </label>
+          <select
+            id="user-select"
+            value={currentUserId}
+            onChange={(e) => setCurrentUserId(e.target.value)}
+            className="input-select"
+            style={{ padding: "6px 10px", fontSize: "1rem" }}
+          >
+            <option value="">-- Select User --</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
         >
-          <option value="">-- Select User --</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+          <input
+            type="checkbox"
+            checked={rememberUser}
+            onChange={() => setRememberUser(!rememberUser)}
+            style={{ marginRight: "8px" }}
+          />
+          Remember my user
+        </label>
       </div>
 
       <button
@@ -106,7 +240,7 @@ export default function Dashboard({ onBack }) {
         onClick={punchIn}
         disabled={!currentUserId || loading}
       >
-        🏆 Punch In
+        Punch In
       </button>
 
       <h3>User Logs for {today}</h3>
@@ -199,3 +333,4 @@ export default function Dashboard({ onBack }) {
     </div>
   );
 }
+
