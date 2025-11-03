@@ -84,6 +84,7 @@ export default function UsersDashboard({ onBack }) {
       alert("Failed to set break time.");
     } else {
       await fetchLogs();
+      await fetchAllLogs();
     }
     setLoading(false);
   };
@@ -125,6 +126,7 @@ export default function UsersDashboard({ onBack }) {
       if (error) throw error;
 
       await fetchLogs();
+      await fetchAllLogs();
     } catch (err) {
       console.error("Punch in error:", err);
       alert("Punch in failed.");
@@ -144,6 +146,7 @@ export default function UsersDashboard({ onBack }) {
         .eq("id", log.id);
       if (error) throw error;
       await fetchLogs();
+      await fetchAllLogs();
     } catch (err) {
       console.error("Punch out error:", err);
       alert("Punch out failed.");

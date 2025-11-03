@@ -660,6 +660,23 @@ input[type="email"]:focus {
     inset 0 0 10px #a78bfa;
 }
 
+.week-select {
+  width: 110px;         /* Shrink width */
+  padding: 4px 6px;     /* Smaller padding */
+  font-size: 0.9rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  margin-right: 8px;
+}
+
+.export-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px; /* spacing between buttons */
+  margin-bottom: 15px;
+}
+
 /* Punch In Button */
 .btn-punch {
   display: block;

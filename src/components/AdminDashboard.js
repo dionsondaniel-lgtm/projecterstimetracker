@@ -130,59 +130,73 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
   ];
 
   const punchIn = async () => {
-    if (!currentUserId) return alert("Please select a user.");
-    setLoading(true);
-    try {
-      const { data: existing, error: exErr } = await supabase
-        .from("logs")
-        .select("*")
-        .eq("user_id", currentUserId)
-        .eq("date", today)
-        .is("time_out", null);
+  if (!currentUserId) return alert("Please select a user.");
+  setLoading(true);
+  try {
+    const { data: existing, error: exErr } = await supabase
+      .from("logs")
+      .select("*")
+      .eq("user_id", currentUserId)
+      .eq("date", today)
+      .is("time_out", null);
 
-      if (exErr) throw exErr;
-      if (existing.length > 0) {
-        alert("There is already an open log entry.");
-        setLoading(false);
-        return;
-      }
-
-      const { error } = await supabase.from("logs").insert([
-        {
-          user_id: currentUserId,
-          date: today,
-          time_in: new Date().toISOString(),
-          status: "Present",
-          break_time: 0,
-        },
-      ]);
-      if (error) throw error;
-      await fetchTodayUserLogs();
-    } catch (err) {
-      console.error("punchIn error:", err);
-      alert("Punch in failed.");
-    } finally {
+    if (exErr) throw exErr;
+    if (existing.length > 0) {
+      alert("There is already an open log entry.");
       setLoading(false);
+      return;
     }
-  };
 
-  const punchOut = async (log) => {
-    if (!log || log.time_out) return alert("No valid entry to punch out.");
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("logs")
-        .update({ time_out: new Date().toISOString() })
-        .eq("id", log.id);
-      if (error) throw error;
-      await fetchTodayUserLogs();
-    } catch (err) {
-      console.error("punchOut error:", err);
-      alert("Punch out failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { error } = await supabase.from("logs").insert([
+      {
+        user_id: currentUserId,
+        date: today,
+        time_in: new Date().toISOString(),
+        status: "Present",
+        break_time: 0,
+      },
+    ]);
+    if (error) throw error;
+
+    // Refresh logs and charts
+    await Promise.all([
+      fetchTodayUserLogs(),
+      fetchTodayAllUserLogs(),
+      fetchWeekAllUserLogs(),
+      fetchRunningAllUserLogs(),
+    ]);
+  } catch (err) {
+    console.error("punchIn error:", err);
+    alert("Punch in failed.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+const punchOut = async (log) => {
+  if (!log || log.time_out) return alert("No valid entry to punch out.");
+  setLoading(true);
+  try {
+    const { error } = await supabase
+      .from("logs")
+      .update({ time_out: new Date().toISOString() })
+      .eq("id", log.id);
+    if (error) throw error;
+
+    // Refresh logs and charts
+    await Promise.all([
+      fetchTodayUserLogs(),
+      fetchTodayAllUserLogs(),
+      fetchWeekAllUserLogs(),
+      fetchRunningAllUserLogs(),
+    ]);
+  } catch (err) {
+    console.error("punchOut error:", err);
+    alert("Punch out failed.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="admin-container futuristic-admin-container">
