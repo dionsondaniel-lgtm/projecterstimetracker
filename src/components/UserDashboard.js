@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import dayjs from "dayjs";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import ExcelJS from "exceljs";
 
 export default function UsersDashboard({ onBack }) {
   const [users, setUsers] = useState([]);
@@ -155,36 +155,77 @@ export default function UsersDashboard({ onBack }) {
     }
   };
 
-  const exportToExcel = () => {
-    if (allLogs.length === 0) {
-      alert("No logs to export!");
-      return;
-    }
+const exportToExcel = async () => {
+  if (allLogs.length === 0) {
+    alert("No logs to export!");
+    return;
+  }
 
-    const exportData = allLogs.map((log) => ({
-      User: log.user_id?.name || log.user_id,
-      Date: log.date,
-      "Time In": formatTime(log.time_in),
-      "Time Out": formatTime(log.time_out),
-      "Break (mins)": log.break_time ?? 0,
-      Status: log.status,
-    }));
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("All Logs");
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
-    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  worksheet.columns = [
+    { header: "User", key: "user", width: 20 },
+    { header: "Date", key: "date", width: 15 },
+    { header: "Time In", key: "timeIn", width: 15 },
+    { header: "Time Out", key: "timeOut", width: 15 },
+    { header: "Break (mins)", key: "breakTime", width: 15 },
+    { header: "Status", key: "status", width: 15 },
+    { header: "Hours Worked", key: "hoursWorked", width: 18 },
+  ];
 
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
-    saveAs(blob, `projecters_time_logs_${today}.xlsx`);
-  };
+  let startRow = 2;
+
+  allLogs.forEach((log, i) => {
+    const rowNumber = startRow + i;
+    const row = worksheet.getRow(rowNumber);
+
+    row.getCell(1).value = log.user_id?.name || log.user_id;
+    row.getCell(2).value = log.date;
+    row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "";
+    row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "";
+    row.getCell(5).value = log.break_time ?? 0;
+    row.getCell(6).value = log.status;
+
+    // Auto hours worked
+    row.getCell(7).value = {
+      formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`
+    };
+
+    row.commit();
+  });
+
+  const lastRow = worksheet.lastRow.number;
+
+  worksheet.addTable({
+    name: `AllLogs`,
+    ref: "A1",
+    headerRow: true,
+    totalsRow: false,
+    style: { theme: "TableStyleMedium13", showRowStripes: true },
+    columns: worksheet.columns.map((col) => ({
+      name: col.header,
+      filterButton: true,
+    })),
+    rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  saveAs(
+    new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    `projecters_all_logs_${dayjs().format("YYYY-MM-DD")}.xlsx`
+  );
+};
 
   return (
     <div className="dashboard-container">
     <h1>Projecters Time Tracking Dashboard</h1>
 
       <button className="btn-back" onClick={onBack}>
-        ← Back to Admin
+        ← Back to Main
       </button>
 
       {/* Select user and remember */}

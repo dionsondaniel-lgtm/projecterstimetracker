@@ -18,7 +18,11 @@ export default function Dashboard({ onBack }) {
   const [showAllLogs, setShowAllLogs] = useState(false);
 
   const today = dayjs().format("YYYY-MM-DD");
-  const [selectedWeek, setSelectedWeek] = useState(dayjs().week());
+
+  // ---------------- NEW DATE RANGE STATES ----------------
+  const [startDate, setStartDate] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
+  // --------------------------------------------------------
 
   useEffect(() => {
     fetchUsers();
@@ -43,6 +47,7 @@ export default function Dashboard({ onBack }) {
       .eq("user_id", currentUserId)
       .eq("date", today)
       .order("time_in", { ascending: false });
+
     if (error) console.error("fetchLogs error:", error);
     else setLogs(data);
   }
@@ -53,155 +58,19 @@ export default function Dashboard({ onBack }) {
       .select("*, user_id(name)")
       .order("date", { ascending: false })
       .order("time_in", { ascending: false });
+
     if (error) console.error("fetchAllLogs error:", error);
     else setAllLogs(data);
   }
 
-  const exportToExcel = () => {
-    if (allLogs.length === 0) {
-      alert("No logs to export!");
-      return;
-    }
-
-    const exportData = allLogs.map((log) => ({
-      User: log.user_id?.name || log.user_id,
-      Date: log.date,
-      "Time In": log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "-",
-      "Time Out": log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "-",
-      "Break (mins)": log.break_time ?? 0,
-      Status: log.status,
-    }));
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("All Logs");
-
-    worksheet.columns = Object.keys(exportData[0]).map((key) => ({
-      header: key,
-      key,
-      width: 15,
-    }));
-
-    exportData.forEach((data) => worksheet.addRow(data));
-
-    workbook.xlsx.writeBuffer().then((buffer) => {
-      saveAs(
-        new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }),
-        `projecters_time_logs_${today}.xlsx`
-      );
-    });
-  };
-
-const exportCurrentWeekToExcel = async () => {
-  if (!allLogs || allLogs.length === 0) {
+const exportToExcel = async () => {
+  if (allLogs.length === 0) {
     alert("No logs to export!");
     return;
   }
 
-  const now = dayjs();
-  const weekStart = now.startOf("week");
-  const weekEnd = now.endOf("week");
-
-  const weekLogs = allLogs.filter((log) =>
-    dayjs(log.date).isBetween(weekStart, weekEnd, "day", "[]")
-  );
-
-  if (weekLogs.length === 0) {
-    alert("No logs found for the current week!");
-    return;
-  }
-
-  // Format label for sheet and file
-  const weekLabel = `${weekStart.format("MMM D")} - ${weekEnd.format("MMM D")}`;
-  const safeLabel = `${weekStart.format("MMM_D")}-${weekEnd.format("MMM_D")}`; // safe for file name
-
-  // Create a new workbook and sheet with week name
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(weekLabel);
-
-  // Define columns
-  worksheet.columns = [
-    { header: "User", key: "user", width: 20 },
-    { header: "Date", key: "date", width: 15 },
-    { header: "Time In", key: "timeIn", width: 15 },
-    { header: "Time Out", key: "timeOut", width: 15 },
-    { header: "Break (mins)", key: "breakTime", width: 15 },
-    { header: "Status", key: "status", width: 15 },
-    { header: "Hours Worked", key: "hoursWorked", width: 18 },
-  ];
-
-  // Add log data
-  let startRow = 2;
-  weekLogs.forEach((log, i) => {
-    const rowNumber = startRow + i;
-    const row = worksheet.getRow(rowNumber);
-
-    row.getCell(1).value = log.user_id?.name || log.user_id; // A: User
-    row.getCell(2).value = dayjs(log.date).format("YYYY-MM-DD"); // B: Date
-    row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : ""; // C: Time In
-    row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : ""; // D: Time Out
-    row.getCell(5).value = log.break_time ?? 0; // E: Break (mins)
-    row.getCell(6).value = log.status; // F: Status
-
-    // Formula for Hours Worked (G)
-    row.getCell(7).value = {
-      formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`,
-    };
-
-    row.commit();
-  });
-
-  // Apply table style (Medium 13)
-  const lastRow = worksheet.lastRow.number;
-  worksheet.addTable({
-    name: `Week_${weekStart.format("MMDD")}`,
-    ref: "A1",
-    headerRow: true,
-    totalsRow: false,
-    style: {
-      theme: "TableStyleMedium13",
-      showRowStripes: true,
-    },
-    columns: worksheet.columns.map((col) => ({ name: col.header, filterButton: true })),
-    rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
-  });
-
-  // Export file with week date range
-  const buffer = await workbook.xlsx.writeBuffer();
-  saveAs(
-    new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-    `projecters_time_logs_${safeLabel}.xlsx`
-  );
-};
-
-const exportSelectedWeekToExcel = async () => {
-  if (!allLogs || allLogs.length === 0) {
-    alert("No logs to export!");
-    return;
-  }
-
-  const year = dayjs().year();
-  const weekNum = parseInt(selectedWeek);
-  const weekStart = dayjs().year(year).week(weekNum).startOf("week");
-  const weekEnd = dayjs().year(year).week(weekNum).endOf("week");
-
-  const weekLogs = allLogs.filter((log) =>
-    dayjs(log.date).isBetween(weekStart, weekEnd, "day", "[]")
-  );
-
-  if (weekLogs.length === 0) {
-    alert(`No logs found for Week ${weekNum} (${weekStart.format("MMM D")} - ${weekEnd.format("MMM D")})`);
-    return;
-  }
-
-  const weekLabel = `${weekStart.format("MMM D")} - ${weekEnd.format("MMM D")}`;
-  const safeLabel = `${weekStart.format("MMM_D")}-${weekEnd.format("MMM_D")}`;
-
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(weekLabel);
+  const worksheet = workbook.addWorksheet("All Logs");
 
   worksheet.columns = [
     { header: "User", key: "user", width: 20 },
@@ -214,48 +83,136 @@ const exportSelectedWeekToExcel = async () => {
   ];
 
   let startRow = 2;
-  weekLogs.forEach((log, i) => {
+
+  allLogs.forEach((log, i) => {
     const rowNumber = startRow + i;
     const row = worksheet.getRow(rowNumber);
 
     row.getCell(1).value = log.user_id?.name || log.user_id;
-    row.getCell(2).value = dayjs(log.date).format("YYYY-MM-DD");
+    row.getCell(2).value = log.date;
     row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "";
     row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "";
     row.getCell(5).value = log.break_time ?? 0;
     row.getCell(6).value = log.status;
 
+    // Auto hours worked
     row.getCell(7).value = {
-      formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`,
+      formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`
     };
 
     row.commit();
   });
 
   const lastRow = worksheet.lastRow.number;
+
   worksheet.addTable({
-    name: `Week_${weekStart.format("MMDD")}`,
+    name: `AllLogs`,
     ref: "A1",
     headerRow: true,
     totalsRow: false,
-    style: {
-      theme: "TableStyleMedium13",
-      showRowStripes: true,
-    },
-    columns: worksheet.columns.map((col) => ({ name: col.header, filterButton: true })),
+    style: { theme: "TableStyleMedium13", showRowStripes: true },
+    columns: worksheet.columns.map((col) => ({
+      name: col.header,
+      filterButton: true,
+    })),
     rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
+
   saveAs(
     new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }),
-    `projecters_time_logs_${safeLabel}.xlsx`
+    `projecters_all_logs_${dayjs().format("YYYY-MM-DD")}.xlsx`
   );
 };
 
+  // ---------------- NEW DATE RANGE EXPORT FUNCTION ----------------
+  const exportDateRangeToExcel = async () => {
+    if (!startDate || !endDate) {
+      alert("Please select both a start and end date.");
+      return;
+    }
 
+    const start = dayjs(startDate);
+    const end = dayjs(endDate);
+
+    if (end.isBefore(start)) {
+      alert("End date must be after start date.");
+      return;
+    }
+
+    const rangeLogs = allLogs.filter((log) =>
+      dayjs(log.date).isBetween(start, end, "day", "[]")
+    );
+
+    if (rangeLogs.length === 0) {
+      alert("No logs found in this date range.");
+      return;
+    }
+
+    const label = `${start.format("MMM_D")}-${end.format("MMM_D")}`;
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`Logs ${label}`);
+
+    worksheet.columns = [
+      { header: "User", key: "user", width: 20 },
+      { header: "Date", key: "date", width: 15 },
+      { header: "Time In", key: "timeIn", width: 15 },
+      { header: "Time Out", key: "timeOut", width: 15 },
+      { header: "Break (mins)", key: "breakTime", width: 15 },
+      { header: "Status", key: "status", width: 15 },
+      { header: "Hours Worked", key: "hoursWorked", width: 18 },
+    ];
+
+    let startRow = 2;
+    rangeLogs.forEach((log, i) => {
+      const rowNumber = startRow + i;
+      const row = worksheet.getRow(rowNumber);
+
+      row.getCell(1).value = log.user_id?.name || log.user_id;
+      row.getCell(2).value = log.date;
+      row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "";
+      row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "";
+      row.getCell(5).value = log.break_time ?? 0;
+      row.getCell(6).value = log.status;
+
+      row.getCell(7).value = {
+        formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`,
+      };
+
+      row.commit();
+    });
+
+    const lastRow = worksheet.lastRow.number;
+
+    worksheet.addTable({
+      name: `DateRange_${start.format("MMDD")}`,
+      ref: "A1",
+      headerRow: true,
+      totalsRow: false,
+      style: {
+        theme: "TableStyleMedium13",
+        showRowStripes: true,
+      },
+      columns: worksheet.columns.map((col) => ({
+        name: col.header,
+        filterButton: true,
+      })),
+      rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    saveAs(
+      new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `projecters_logs_${label}.xlsx`
+    );
+  };
+  // -----------------------------------------------------------------
 
   const punchIn = async () => {
     if (!currentUserId) {
@@ -271,18 +228,13 @@ const exportSelectedWeekToExcel = async () => {
       .eq("date", today)
       .is("time_out", null);
 
-    if (exErr) {
-      console.error("existing check error:", exErr);
-      setLoading(false);
-      return;
-    }
-    if (existing.length > 0) {
+    if (existing?.length > 0) {
       alert("You already punched in without punching out.");
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.from("logs").insert([
+    await supabase.from("logs").insert([
       {
         user_id: currentUserId,
         date: today,
@@ -291,123 +243,79 @@ const exportSelectedWeekToExcel = async () => {
         break_time: 0,
       },
     ]);
-    if (error) console.error("punchIn error:", error);
+
     await fetchLogs();
     await fetchAllLogs();
     setLoading(false);
   };
 
   const punchOut = async (log) => {
-    if (!log || log.time_out) {
-      alert("Already punched out");
-      return;
-    }
+    if (!log || log.time_out) return alert("Already punched out");
+
     setLoading(true);
-    const { error } = await supabase
+    await supabase
       .from("logs")
       .update({ time_out: new Date().toISOString() })
       .eq("id", log.id);
-    if (error) console.error("punchOut error:", error);
+
     await fetchLogs();
     await fetchAllLogs();
     setLoading(false);
   };
 
   const setBreakTime = async (log) => {
-    if (!log) return;
     const mins = prompt("Enter break minutes:", log.break_time ?? "0");
     if (mins === null) return;
+
     const m = parseInt(mins);
-    if (isNaN(m) || m < 0) {
-      alert("Invalid break time");
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase
-      .from("logs")
-      .update({ break_time: m })
-      .eq("id", log.id);
-    if (error) console.error("setBreakTime error:", error);
-    await fetchLogs();
-    await fetchAllLogs();
-    setLoading(false);
+    if (isNaN(m) || m < 0) return alert("Invalid break time");
+
+    await supabase.from("logs").update({ break_time: m }).eq("id", log.id);
+
+    fetchLogs();
+    fetchAllLogs();
   };
 
   const deleteLog = async (logId) => {
     const pass = prompt("Enter admin password to delete:");
-    if (pass !== "1234") {
-      alert("❌ Incorrect password!");
-      return;
-    }
+    if (pass !== "1234") return alert("❌ Incorrect password!");
 
-    const confirmDelete = window.confirm("Are you sure you want to delete this log?");
-    if (!confirmDelete) return;
+    if (!window.confirm("Are you sure you want to delete this log?")) return;
 
-    const { error } = await supabase.from("logs").delete().eq("id", logId);
-    if (error) {
-      console.error("deleteLog error:", error);
-      alert("Failed to delete log.");
-      return;
-    }
+    await supabase.from("logs").delete().eq("id", logId);
 
-    await fetchAllLogs();
-    await fetchLogs();
-    alert("✅ Log deleted successfully.");
+    fetchAllLogs();
+    fetchLogs();
   };
 
-  const formatTime = (iso) => {
-    if (!iso) return "-";
-    return dayjs(iso).format("HH:mm:ss");
-  };
+  const formatTime = (iso) => (iso ? dayjs(iso).format("HH:mm:ss") : "-");
 
   const updateLog = async (log) => {
     const pass = prompt("Enter admin password to update:");
-    if (pass !== "1234") {
-      alert("❌ Incorrect password!");
-      return;
-    }
+    if (pass !== "1234") return alert("❌ Incorrect password!");
 
     const newTimeIn = prompt(
-      "Enter new Time In (YYYY-MM-DD HH:mm:ss) or leave blank:",
+      "Enter new Time In (YYYY-MM-DD HH:mm:ss)",
       log.time_in ? dayjs(log.time_in).format("YYYY-MM-DD HH:mm:ss") : ""
     );
-    if (newTimeIn && !dayjs(newTimeIn, "YYYY-MM-DD HH:mm:ss", true).isValid()) {
-      alert("Invalid Time In format!");
-      return;
-    }
 
     const newTimeOut = prompt(
-      "Enter new Time Out (YYYY-MM-DD HH:mm:ss) or leave blank:",
+      "Enter new Time Out (YYYY-MM-DD HH:mm:ss)",
       log.time_out ? dayjs(log.time_out).format("YYYY-MM-DD HH:mm:ss") : ""
     );
-    if (newTimeOut && !dayjs(newTimeOut, "YYYY-MM-DD HH:mm:ss", true).isValid()) {
-      alert("Invalid Time Out format!");
-      return;
-    }
 
-    const newBreak = prompt("Enter new Break minutes or leave blank:", log.break_time ?? "0");
-    if (newBreak && (isNaN(parseInt(newBreak)) || parseInt(newBreak) < 0)) {
-      alert("Invalid Break time!");
-      return;
-    }
+    const newBreak = prompt("Enter new Break minutes:", log.break_time ?? "0");
 
-    setLoading(true);
     const updates = {};
     if (newTimeIn) updates.time_in = dayjs(newTimeIn).toISOString();
     if (newTimeOut) updates.time_out = dayjs(newTimeOut).toISOString();
     if (newBreak) updates.break_time = parseInt(newBreak);
 
-    const { error } = await supabase.from("logs").update(updates).eq("id", log.id);
-    setLoading(false);
+    await supabase.from("logs").update(updates).eq("id", log.id);
 
-    if (error) {
-      console.error("updateLog error:", error);
-      alert("Failed to update log.");
-    } else {
-      alert("✅ Log updated successfully.");
-      fetchAllLogs();
-      fetchLogs();
-    }
+    fetchAllLogs();
+    fetchLogs();
+    alert("Updated!");
   };
 
   return (
@@ -415,9 +323,10 @@ const exportSelectedWeekToExcel = async () => {
       <h1>Projecters Time Tracking Dashboard</h1>
 
       <button className="btn-secondary" onClick={onBack} style={{ marginBottom: 20 }}>
-        ← Return to Admin Panel
+        ← Back to Main
       </button>
 
+      {/* Select User */}
       <div style={{ marginBottom: 15 }}>
         <label htmlFor="user-select" style={{ fontWeight: "bold" }}>
           Select User:
@@ -438,6 +347,7 @@ const exportSelectedWeekToExcel = async () => {
         </select>
       </div>
 
+      {/* Punch In */}
       <button
         className="btn-primary"
         onClick={punchIn}
@@ -447,6 +357,7 @@ const exportSelectedWeekToExcel = async () => {
         Punch In
       </button>
 
+      {/* Today's Logs */}
       <h3>Today's Logs — {today}</h3>
       {logs.length === 0 ? (
         <p className="empty-row">No logs recorded for today.</p>
@@ -456,7 +367,7 @@ const exportSelectedWeekToExcel = async () => {
             <tr>
               <th>Time In</th>
               <th>Time Out</th>
-              <th>Break (mins)</th>
+              <th>Break</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
@@ -467,26 +378,18 @@ const exportSelectedWeekToExcel = async () => {
                 <td>{formatTime(log.time_in)}</td>
                 <td>{formatTime(log.time_out)}</td>
                 <td>
-                  <button
-                    className="btn-sm btn-info"
-                    onClick={() => setBreakTime(log)}
-                    title="Edit break duration"
-                  >
+                  <button className="btn-sm btn-info" onClick={() => setBreakTime(log)}>
                     {log.break_time ?? 0}
                   </button>
                 </td>
                 <td>{log.status}</td>
                 <td>
                   {!log.time_out ? (
-                    <button
-                      className="btn-sm btn-danger"
-                      onClick={() => punchOut(log)}
-                      disabled={loading}
-                    >
+                    <button className="btn-sm btn-danger" onClick={() => punchOut(log)}>
                       Punch Out
                     </button>
                   ) : (
-                    <span>Completed</span>
+                    "Completed"
                   )}
                 </td>
               </tr>
@@ -497,69 +400,55 @@ const exportSelectedWeekToExcel = async () => {
 
       <hr style={{ margin: "40px 0" }} />
 
-<div style={{ marginBottom: 25 }}>
-  {/* First row */}
-  <div style={{ marginBottom: 10 }}>
-    <button
-      className="btn-secondary"
-      onClick={async () => {
-        const nextState = !showAllLogs;
-        setShowAllLogs(nextState);
+      {/* Buttons + Date Range */}
+      <div style={{ marginBottom: 25 }}>
+        {/* First Row */}
+        <div style={{ marginBottom: 10 }}>
+          <button
+            className="btn-secondary"
+            onClick={async () => {
+              const nextState = !showAllLogs;
+              setShowAllLogs(nextState);
+              nextState ? fetchAllLogs() : fetchLogs();
+            }}
+            style={{ marginRight: 10 }}
+          >
+            {showAllLogs ? "Hide All Logs" : "View All Logs"}
+          </button>
 
-        if (nextState) {
-          await fetchAllLogs();
-          await fetchLogs();
-        } else {
-          if (currentUserId) await fetchLogs();
-        }
-      }}
-      style={{ marginRight: 10 }}
-    >
-      {showAllLogs ? "Hide All Logs" : "View All Logs"}
-    </button>
+          <button className="btn-primary" onClick={exportToExcel} style={{ marginRight: 10 }}>
+            Export All Logs
+          </button>
+        </div>
 
-    <button
-      className="btn-primary"
-      onClick={exportToExcel}
-      style={{ marginRight: 10 }}
-    >
-      Export All Logs to Excel
-    </button>
+        {/* ---------------- NEW DATE RANGE UI ---------------- */}
+        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
+          <label style={{ fontWeight: "bold" }}>Select Date Range:</label>
 
-    <button className="btn-primary" onClick={exportCurrentWeekToExcel}>
-      Export Current Week Logs
-    </button>
-  </div>
+          <input
+            type="date"
+            className="input-select"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
 
-  {/* Second row */}
-  <div style={{ marginTop: 10 }}>
-    <label
-      htmlFor="week-select"
-      style={{ marginRight: 10, fontWeight: "bold" }}
-    >
-      Select Week:
-    </label>
+          <span style={{ fontWeight: "bold" }}>to</span>
 
-    <select
-      id="week-select"
-      className="week-select"
-      value={selectedWeek}
-      onChange={(e) => setSelectedWeek(e.target.value)}
-      style={{ marginRight: 10 }}
-    >
-      {Array.from({ length: 52 }, (_, i) => (
-        <option key={i + 1} value={i + 1}>
-          Week {i + 1}
-        </option>
-      ))}
-    </select>
+          <input
+            type="date"
+            className="input-select"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
 
-    <button className="btn-primary" onClick={exportSelectedWeekToExcel}>
-      Export Selected Week Logs
-    </button>
-  </div>
-</div>
+          <button className="btn-primary" onClick={exportDateRangeToExcel}>
+            Export Selected Date Range
+          </button>
+        </div>
+        {/* ----------------------------------------------------- */}
+      </div>
 
+      {/* All Logs Table */}
       {showAllLogs && (
         <>
           {allLogs.length === 0 ? (
@@ -572,7 +461,7 @@ const exportSelectedWeekToExcel = async () => {
                   <th>Date</th>
                   <th>Time In</th>
                   <th>Time Out</th>
-                  <th>Break (mins)</th>
+                  <th>Break</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -589,8 +478,8 @@ const exportSelectedWeekToExcel = async () => {
                     <td>
                       <button
                         className="btn-sm btn-danger"
-                        onClick={() => deleteLog(log.id)}
                         style={{ marginRight: 8 }}
+                        onClick={() => deleteLog(log.id)}
                       >
                         Delete
                       </button>

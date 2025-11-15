@@ -1,0 +1,208 @@
+/* ---------------- Global Container ---------------- */
+.admin-container {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e6f7ff 100%);
+  min-height: 100vh;
+  padding: 40px 20px;
+  color: #212121;
+}
+
+.admin-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 40px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #4e73df;
+}
+
+/* ---------------- Dropdown ---------------- */
+.dropdown-container {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+  list-style: none;
+  padding: 10px 0;
+  margin-top: 5px;
+  animation: fadeIn 0.2s ease forwards;
+  z-index: 100;
+}
+
+.dropdown-menu li {
+  padding: 10px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.dropdown-menu li:hover {
+  background: rgba(78,115,223,0.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.icon-left {
+  margin-right: 6px;
+}
+
+/* ---------------- Buttons ---------------- */
+.futuristic-btn {
+  background: linear-gradient(90deg, #4e73df, #1cc88a);
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.futuristic-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-secondary.futuristic-btn {
+  background: linear-gradient(90deg, #1cc88a, #4e73df);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+/* ---------------- User Selection ---------------- */
+.user-selection {
+  margin: 30px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.input-select {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.remember-user {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------- Logs Table ---------------- */
+.logs-section {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 40px;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.logs-table th, .logs-table td {
+  padding: 10px;
+  text-align: center;
+}
+
+.logs-table thead {
+  background: #4e73df;
+  color: #fff;
+  border-radius: 8px;
+}
+
+.logs-table tbody tr:hover {
+  background: rgba(78,115,223,0.1);
+  transition: background 0.2s ease;
+}
+
+/* ---------------- Metrics Container ---------------- */
+.metrics-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 40px;
+}
+
+/* ---------------- Exchange Rate Card ---------------- */
+.exchange-card {
+  width: 300px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+/* ---------------- Performance Metrics Card ---------------- */
+.performance-card {
+  flex: 2; /* twice the width relative to the fixed 300px exchange card */
+  min-width: 400px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* ---------------- Performance Metrics Title ---------------- */
+.performance-title {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #212121;
+  font-weight: 700;
+}
+
+/* ---------------- Small Text ---------------- */
+.small-text {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 5px;
+}
+
+/* ---------------- Refresh button ---------------- */
+.refresh-btn {
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+/* ---------------- Responsive ---------------- */
+@media screen and (max-width: 900px) {
+  .metrics-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .exchange-card,
+  .performance-card {
+    width: 90%;
+    min-width: unset;
+    flex: unset;
+  }
+}
+
+
