@@ -1,4 +1,7 @@
-/* ---------------- Global Container ---------------- */
+/* ====================================================================== */
+/*                         GLOBAL LAYOUT + CONTAINER                      */
+/* ====================================================================== */
+
 .admin-container {
   font-family: 'Inter', sans-serif;
   background: linear-gradient(135deg, #f0f4ff 0%, #e6f7ff 100%);
@@ -16,7 +19,10 @@
   color: #4e73df;
 }
 
-/* ---------------- Dropdown ---------------- */
+/* ====================================================================== */
+/*                                DROPDOWN                                */
+/* ====================================================================== */
+
 .dropdown-container {
   position: relative;
   margin-bottom: 30px;
@@ -26,7 +32,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  background: white;
+  background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 6px 15px rgba(0,0,0,0.15);
   list-style: none;
@@ -42,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
 
 .dropdown-menu li:hover {
@@ -58,27 +64,31 @@
   margin-right: 6px;
 }
 
-/* ---------------- Buttons ---------------- */
+/* ====================================================================== */
+/*                                BUTTONS                                 */
+/* ====================================================================== */
+
 .futuristic-btn {
-  background: linear-gradient(90deg, #4e73df, #1cc88a);
+  background: linear-gradient(135deg, #4e73df, #1cc88a);
   border: none;
-  color: white;
-  padding: 10px 20px;
+  padding: 10px 18px;
+  color: #ffffff;
   border-radius: 8px;
-  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
 }
 
 .futuristic-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  filter: brightness(1.2);
+  transform: scale(1.03);
 }
 
 .btn-secondary.futuristic-btn {
-  background: linear-gradient(90deg, #1cc88a, #4e73df);
+  background: linear-gradient(135deg, #1cc88a, #4e73df);
 }
 
 .btn-sm {
@@ -87,7 +97,10 @@
   border-radius: 6px;
 }
 
-/* ---------------- User Selection ---------------- */
+/* ====================================================================== */
+/*                          USER SELECTION AREA                           */
+/* ====================================================================== */
+
 .user-selection {
   margin: 30px 0;
   display: flex;
@@ -102,6 +115,10 @@
   border: 1px solid #ccc;
 }
 
+.input-select.small {
+  padding: 5px 8px;
+}
+
 .remember-user {
   font-size: 0.9rem;
   display: flex;
@@ -109,27 +126,33 @@
   gap: 6px;
 }
 
-/* ---------------- Logs Table ---------------- */
+/* ====================================================================== */
+/*                               LOGS TABLE                               */
+/* ====================================================================== */
+
 .logs-section {
   width: 100%;
   max-width: 800px;
   margin-bottom: 40px;
+  overflow-x: auto;
 }
 
 .logs-table {
   width: 100%;
   border-collapse: collapse;
+  text-align: center;
 }
 
-.logs-table th, .logs-table td {
+.logs-table th,
+.logs-table td {
   padding: 10px;
-  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .logs-table thead {
   background: #4e73df;
-  color: #fff;
-  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .logs-table tbody tr:hover {
@@ -137,7 +160,10 @@
   transition: background 0.2s ease;
 }
 
-/* ---------------- Metrics Container ---------------- */
+/* ====================================================================== */
+/*                          METRICS + PERFORMANCE                         */
+/* ====================================================================== */
+
 .metrics-container {
   display: flex;
   justify-content: space-between;
@@ -148,19 +174,8 @@
   margin-top: 40px;
 }
 
-/* ---------------- Exchange Rate Card ---------------- */
-.exchange-card {
-  width: 300px;
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  text-align: center;
-}
-
-/* ---------------- Performance Metrics Card ---------------- */
 .performance-card {
-  flex: 2; /* twice the width relative to the fixed 300px exchange card */
+  flex: 2;
   min-width: 400px;
   background: #ffffff;
   padding: 20px;
@@ -168,29 +183,221 @@
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-/* ---------------- Performance Metrics Title ---------------- */
 .performance-title {
-  width: 100%;
   text-align: center;
   margin-bottom: 20px;
-  color: #212121;
   font-weight: 700;
+  color: #212121;
+
+    /* Center horizontally & vertically */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 50px; /* adjust if needed */
 }
 
-/* ---------------- Small Text ---------------- */
 .small-text {
   font-size: 0.8rem;
   color: #555;
   margin-top: 5px;
 }
 
-/* ---------------- Refresh button ---------------- */
-.refresh-btn {
-  margin-top: 10px;
-  font-size: 0.85rem;
+/* ====================================================================== */
+/*                              EXCHANGE CARD                             */
+/* ====================================================================== */
+
+.exchange-card {
+  width: 300px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 0 12px rgba(0,0,0,0.12);
+  text-align: center;
 }
 
-/* ---------------- Responsive ---------------- */
+.exchange-chart {
+  height: 120px;
+  width: 250px;
+  margin: 10px auto 0;
+}
+
+/* ====================================================================== */
+/*                         CLOCKS + GRADIENT BORDER                       */
+/* ====================================================================== */
+
+.top-flex-row {
+  display: flex;
+  align-items: stretch;
+  gap: 25px;
+  margin-top: 20px;
+}
+
+/* Outer animated border */
+.clock-super-card {
+  position: relative;
+  padding: 3px;
+  border-radius: 18px;
+  background: linear-gradient(0deg, #4e73df, #1cc88a, #ff00ea, #ff8800);
+  background-size: 400% 400%;
+  animation: rotateGradient 6s linear infinite;
+  width: 330px;
+}
+
+@keyframes rotateGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Inner clock display */
+.clock-inner {
+  background: #0d1117;
+  padding: 20px;
+  border-radius: 15px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.clock-section {
+  margin-bottom: 12px;
+}
+
+/* LED neon time */
+.clock-time {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #00eaff;
+  text-shadow: 0 0 8px #00eaff, 0 0 15px #00eaff;
+}
+
+.clock-date {
+  font-size: 0.95rem;
+  color: #eee;
+  opacity: 0.85;
+}
+
+.clock-divider {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  margin: 12px 0;
+}
+
+/* ====================================================================== */
+/*                            HEATMAP CARD                                 */
+/* ====================================================================== */
+
+.heatmap-card {
+  padding: 25px;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  margin-top: 25px;
+  width: 100%; /* full width of parent */
+}
+
+.heatmap-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #1e293b;
+
+  /* Center horizontally & vertically */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 50px;
+}
+
+.heatmap-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heatmap-row {
+  display: flex;
+  align-items: center;
+}
+
+.heatmap-user {
+  width: 150px; /* fixed width for names, adjust as needed */
+  text-align: right; /* aligns name text to the right */
+  padding-right: 10px; /* space between name and cells */
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* trims very long names */
+}
+
+.heatmap-row-cells {
+  display: flex;
+  gap: 4px; /* space between cells */
+  flex-grow: 1; /* remaining space for cells */
+}
+
+.heatmap-cell {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background-color: #e0e0e0;
+  transition: background-color 0.3s;
+}
+.heatmap-cell.level-0 { background-color: #f0f0f0; }
+.heatmap-cell.level-1 { background-color: #a8dadc; }
+.heatmap-cell.level-2 { background-color: #57cc99; }
+.heatmap-cell.level-3 { background-color: #2a9d8f; }
+.heatmap-cell.level-4 { background-color: #264653; }
+
+.heatmap-cell:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+}
+
+.level-0 { background: #e2e8f0; }
+.level-1 { background: #93c5fd; }
+.level-2 { background: #60a5fa; }
+.level-3 { background: #3b82f6; }
+.level-4 { background: #1d4ed8; }
+
+.heatmap-legend {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.legend-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.legend-box.level-0 { background: #e2e8f0; }
+.legend-box.level-1 { background: #93c5fd; }
+.legend-box.level-2 { background: #60a5fa; }
+.legend-box.level-3 { background: #3b82f6; }
+.legend-box.level-4 { background: #1d4ed8; }
+
+.heatmap-subtext {
+  text-align: center;
+  font-size: 0.85rem;
+  margin-top: 10px;
+  color: #64748b;
+}
+
+@media screen and (max-width: 900px) {
+  .heatmap-grid-container {
+    overflow-x: scroll;
+  }
+}
+
+/* ====================================================================== */
+/*                               RESPONSIVE                               */
+/* ====================================================================== */
+
 @media screen and (max-width: 900px) {
   .metrics-container {
     flex-direction: column;
@@ -201,8 +408,10 @@
   .performance-card {
     width: 90%;
     min-width: unset;
-    flex: unset;
+  }
+
+  .top-flex-row {
+    flex-direction: column;
+    align-items: center;
   }
 }
-
-
