@@ -3,9 +3,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import dayjs from "dayjs";
 import { FaBars, FaClock, FaUserPlus, FaChartLine } from "react-icons/fa";
-
 import {
   ResponsiveContainer,
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -13,8 +14,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  LineChart,
-  Line,
 } from "recharts";
 
 import "./AdminDashboard.css";
@@ -31,9 +30,11 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
 
   const [loading, setLoading] = useState(false);
 
-  const [audToPhp, setAudToPhp] = useState(null);
+  // EXCHANGE RATE
+  const [ratePHP, setRatePHP] = useState(null);
   const [exchangeError, setExchangeError] = useState("");
 
+  const [currency, setCurrency] = useState("AUD"); // default (PH clock static)
   const dropdownRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -43,6 +44,14 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
   const [selectedTZ, setSelectedTZ] = useState("Australia/Sydney");
   const [otherTime, setOtherTime] = useState("");
   const [otherDate, setOtherDate] = useState("");
+
+  const timezoneCurrencyMap = {
+    "Australia/Sydney": "AUD",
+    "America/New_York": "USD",
+    "Asia/Dubai": "AED",
+    "Europe/London": "GBP",
+    "Asia/Tokyo": "JPY",
+  };
 
   const timezones = [
     { label: "Australia (Sydney)", value: "Australia/Sydney" },
@@ -67,7 +76,9 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
     fetchTodayAllUserLogs();
     fetchWeekAllUserLogs();
     fetchRunningAllUserLogs();
-    fetchExchangeRate();
+
+    // Fetch exchange for default timezone
+    fetchExchangeRate(currency);
 
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -79,13 +90,13 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Auto-refresh exchange rate
+  // Auto-refresh exchange every 10 min
   useEffect(() => {
-    const interval = setInterval(fetchExchangeRate, 600000);
+    const interval = setInterval(() => fetchExchangeRate(currency), 600000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currency]);
 
-  // Load today user logs when selecting user
+  // Load user logs when user changes
   useEffect(() => {
     if (currentUserId) fetchTodayUserLogs();
     else setTodayUserLogs([]);
@@ -200,20 +211,36 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
   const runningMetrics = computeMetrics(runningAllUserLogs);
 
   const chartData = [
-    { category: "User Today", Work: userTodayMetrics.workHours, Break: +(userTodayMetrics.breakMins / 60).toFixed(2) },
-    { category: "All Users Today", Work: allTodayMetrics.workHours, Break: +(allTodayMetrics.breakMins / 60).toFixed(2) },
-    { category: "This Week", Work: weekMetrics.workHours, Break: +(weekMetrics.breakMins / 60).toFixed(2) },
-    { category: "Total", Work: runningMetrics.workHours, Break: +(runningMetrics.breakMins / 60).toFixed(2) },
+    {
+      category: "User Today",
+      Work: userTodayMetrics.workHours,
+      Break: +(userTodayMetrics.breakMins / 60).toFixed(2),
+    },
+    {
+      category: "All Users Today",
+      Work: allTodayMetrics.workHours,
+      Break: +(allTodayMetrics.breakMins / 60).toFixed(2),
+    },
+    {
+      category: "This Week",
+      Work: weekMetrics.workHours,
+      Break: +(weekMetrics.breakMins / 60).toFixed(2),
+    },
+    {
+      category: "Total",
+      Work: runningMetrics.workHours,
+      Break: +(runningMetrics.breakMins / 60).toFixed(2),
+    },
   ];
 
-  // ---------- EXCHANGE RATE ----------
-  const fetchExchangeRate = async () => {
+  // ---------- EXCHANGE RATE FETCHER ----------
+  const fetchExchangeRate = async (currencyCode) => {
     try {
-      const res = await fetch("https://open.er-api.com/v6/latest/AUD");
+      const res = await fetch(`https://open.er-api.com/v6/latest/${currencyCode}`);
       const data = await res.json();
 
       if (data?.rates?.PHP) {
-        setAudToPhp(data.rates.PHP.toFixed(2));
+        setRatePHP(data.rates.PHP.toFixed(2));
         setExchangeError("");
       } else {
         setExchangeError("Unable to fetch exchange rate.");
@@ -221,6 +248,16 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
     } catch {
       setExchangeError("Failed to fetch exchange rate.");
     }
+  };
+
+  // On timezone change → update currency → fetch rate
+  const handleTimezoneChange = (value) => {
+    setSelectedTZ(value);
+
+    const newCurrency = timezoneCurrencyMap[value];
+    setCurrency(newCurrency);
+
+    fetchExchangeRate(newCurrency);
   };
 
   // ---------- PUNCH IN ----------
@@ -279,17 +316,17 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
   };
 
   // ---------- HEATMAP DATA ----------
-  const allUsers = users.map(u => ({
+  const allUsers = users.map((u) => ({
     ...u,
-    logs: runningAllUserLogs.filter(log => log.user_id === u.id) || []
+    logs: runningAllUserLogs.filter((log) => log.user_id === u.id) || [],
   }));
 
-  // ---------------- JSX BEGIN ----------------
+  // ---------- JSX ----------
   return (
     <div className="admin-container">
       <h1 className="admin-title">Projecters Time Management Dashboard</h1>
 
-      {/* -------- Dropdown Menu -------- */}
+      {/* -------- Dropdown -------- */}
       <div className="dropdown-container" ref={dropdownRef}>
         <button className="futuristic-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
           <FaBars className="icon-left" /> Actions
@@ -310,75 +347,7 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
         )}
       </div>
 
-      {/* -------- CLOCK + EXCHANGE -------- */}
-      <div className="top-flex-row">
-
-        {/* ----- CLOCK BOX WITH 360° BORDER ----- */}
-        <div className="clock-super-card">
-          <div className="clock-inner">
-
-            {/* PH Clock */}
-            <div className="clock-section">
-              <h3>🇵🇭 Philippines</h3>
-              <h1 className="clock-time">{phTime}</h1>
-              <p className="clock-date">{phDate}</p>
-            </div>
-
-            <hr className="clock-divider" />
-
-            {/* Other Country Clock */}
-            <div className="clock-section">
-              <h3>🌍 Other Country</h3>
-
-              <select className="input-select small" value={selectedTZ} onChange={(e) => setSelectedTZ(e.target.value)}>
-                {timezones.map((tz) => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-
-              <h1 className="clock-time">{otherTime}</h1>
-              <p className="clock-date">{otherDate}</p>
-            </div>
-
-          </div>
-        </div>
-
-        {/* -------- EXCHANGE RATE CARD -------- */}
-        <div className="exchange-card enhanced">
-          <h3>AUD → PHP Rate</h3>
-
-          {exchangeError ? (
-            <p style={{ color: "red" }}>{exchangeError}</p>
-          ) : audToPhp ? (
-            <h1>₱{audToPhp}</h1>
-          ) : (
-            <p>Loading...</p>
-          )}
-
-          <button className="futuristic-btn" onClick={fetchExchangeRate}>
-            Refresh Rate
-          </button>
-
-          {/* Mini Sparkline Chart */}
-          <div className="exchange-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={[
-                { value: audToPhp - 0.15 },
-                { value: audToPhp - 0.09 },
-                { value: audToPhp - 0.03 },
-                { value: audToPhp },
-              ]}>
-                <Line type="monotone" dataKey="value" stroke="#4e73df" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <p className="small-text">Auto-updates every 10 minutes</p>
-        </div>
-
-      </div>
-
-      {/* -------- USER SELECTION + PUNCH IN -------- */}
+      {/* -------- USER SELECTION -------- */}
       <div className="user-selection">
         <label>Select User:</label>
 
@@ -407,7 +376,7 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
         </label>
       </div>
 
-      {/* -------- USER LOGS TABLE -------- */}
+      {/* -------- USER LOGS SECTION (MOVED ABOVE CLOCKS) -------- */}
       <div className="logs-section">
         <h4>User Logs for {today}</h4>
 
@@ -449,10 +418,74 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
         )}
       </div>
 
-      {/* -------- PERFORMANCE METRICS + HEATMAP -------- */}
-      <div className="metrics-container">
+      {/* -------- UNIFIED CLOCK + EXCHANGE CARD -------- */}
+      <div className="unified-card">
 
-        {/* BAR CHART */}
+        {/* LEFT — CLOCKS */}
+        <div className="clock-container">
+          <div className="clock-section">
+            <h3>🇵🇭 Philippines</h3>
+            <h1 className="clock-time">{phTime}</h1>
+            <p className="clock-date">{phDate}</p>
+          </div>
+
+          <hr className="clock-divider" />
+
+          <div className="clock-section">
+            <h3>🌍 Other Country</h3>
+
+            <select
+              className="input-select small"
+              value={selectedTZ}
+              onChange={(e) => handleTimezoneChange(e.target.value)}
+            >
+              {timezones.map((tz) => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+
+            <h1 className="clock-time">{otherTime}</h1>
+            <p className="clock-date">{otherDate}</p>
+          </div>
+        </div>
+
+        {/* RIGHT — EXCHANGE RATE */}
+        <div className="rate-container">
+          <h3>{currency} → PHP</h3>
+
+          {exchangeError ? (
+            <p style={{ color: "red" }}>{exchangeError}</p>
+          ) : ratePHP ? (
+            <h1>₱{ratePHP}</h1>
+          ) : (
+            <p>Loading...</p>
+          )}
+
+          <button className="futuristic-btn" onClick={() => fetchExchangeRate(currency)}>
+            Refresh Rate
+          </button>
+
+          <div className="exchange-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={[
+                  { value: ratePHP - 0.2 },
+                  { value: ratePHP - 0.1 },
+                  { value: ratePHP - 0.05 },
+                  { value: ratePHP },
+                ]}
+              >
+                <Line type="monotone" dataKey="value" stroke="#4e73df" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <p className="small-text">Auto-updates every 10 minutes</p>
+        </div>
+      </div>
+
+      {/* -------- PERFORMANCE METRICS -------- */}
+      <div className="metrics-container">
         <div className="performance-card">
           <h2>Performance Metrics</h2>
 
@@ -470,47 +503,47 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
           </ResponsiveContainer>
         </div>
 
-        {/* USER ACTIVITY HEATMAP */}
+        {/* -------- HEATMAP -------- */}
         <div className="heatmap-card performance-card">
           <h2 className="heatmap-title">User Activity Heatmap</h2>
 
           <div className="heatmap-grid-container">
             {allUsers.map((user) => (
               <div className="heatmap-row" key={user.id}>
-  <div className="heatmap-user">{user.name}</div>
-  <div className="heatmap-row-cells">
-    {Array.from({ length: 14 }).map((_, dayIdx) => {
-      const date = dayjs().subtract(dayIdx, "day");
-      const logs = user.logs.filter(l => dayjs(l.date).isSame(date, "day")) || [];
+                <div className="heatmap-user">{user.name}</div>
+                <div className="heatmap-row-cells">
+                  {Array.from({ length: 14 }).map((_, dayIdx) => {
+                    const date = dayjs().subtract(dayIdx, "day");
+                    const logs = user.logs.filter((l) => dayjs(l.date).isSame(date, "day")) || [];
 
-      // Calculate hours worked
-      const hoursWorked = logs.reduce((total, log) => {
-        if (log.time_in && log.time_out) {
-          const inTime = new Date(log.time_in).getTime();
-          const outTime = new Date(log.time_out).getTime();
-          const breakMs = (log.break_time ?? 0) * 60000;
-          return total + Math.max(0, outTime - inTime - breakMs);
-        }
-        return total;
-      }, 0);
-      const hoursWorkedDisplay = (hoursWorked / 3600000).toFixed(2);
+                    const hoursWorked = logs.reduce((total, log) => {
+                      if (log.time_in && log.time_out) {
+                        const inTime = new Date(log.time_in).getTime();
+                        const outTime = new Date(log.time_out).getTime();
+                        const breakMs = (log.break_time ?? 0) * 60000;
+                        return total + Math.max(0, outTime - inTime - breakMs);
+                      }
+                      return total;
+                    }, 0);
 
-      const level =
-        logs.length >= 6 ? 4 :
-        logs.length >= 4 ? 3 :
-        logs.length >= 2 ? 2 :
-        logs.length >= 1 ? 1 : 0;
+                    const hoursWorkedDisplay = (hoursWorked / 3600000).toFixed(2);
 
-      return (
-        <div
-          key={dayIdx}
-          className={`heatmap-cell level-${level}`}
-          title={`${date.format("MMM DD, YYYY")} — ${logs.length} log(s), ${hoursWorkedDisplay}h worked`}
-        ></div>
-      );
-    })}
-  </div>
-</div>
+                    const level =
+                      logs.length >= 6 ? 4 :
+                      logs.length >= 4 ? 3 :
+                      logs.length >= 2 ? 2 :
+                      logs.length >= 1 ? 1 : 0;
+
+                    return (
+                      <div
+                        key={dayIdx}
+                        className={`heatmap-cell level-${level}`}
+                        title={`${date.format("MMM DD, YYYY")} — ${logs.length} log(s), ${hoursWorkedDisplay}h worked`}
+                      ></div>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
 

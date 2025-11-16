@@ -1,313 +1,229 @@
-/* ====================================================================== */
-/*                         GLOBAL LAYOUT + CONTAINER                      */
-/* ====================================================================== */
-
+/* ========== MAIN CONTAINER ========== */
 .admin-container {
-  font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #f0f4ff 0%, #e6f7ff 100%);
-  min-height: 100vh;
-  padding: 40px 20px;
-  color: #212121;
+  width: 95%;
+  max-width: 1500px;
+  margin: auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
 }
 
 .admin-title {
   text-align: center;
-  font-size: 2rem;
-  margin-bottom: 40px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #4e73df;
+  margin-bottom: 25px;
+  font-size: 32px;
+  font-weight: bold;
 }
 
-/* ====================================================================== */
-/*                                DROPDOWN                                */
-/* ====================================================================== */
-
+/* ========== DROPDOWN ========== */
 .dropdown-container {
   position: relative;
-  margin-bottom: 30px;
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
+.futuristic-btn {
+  background: linear-gradient(135deg, #4e73df, #224abe);
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  transition: 0.2s;
+}
+
+.futuristic-btn:hover {
+  opacity: 0.85;
+}
+
+.icon-left {
+  margin-right: 8px;
 }
 
 .dropdown-menu {
   position: absolute;
-  top: 100%;
-  left: 0;
-  background: #ffffff;
+  background: white;
   border-radius: 8px;
-  box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+  width: 200px;
+  margin-top: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
   list-style: none;
-  padding: 10px 0;
-  margin-top: 5px;
-  animation: fadeIn 0.2s ease forwards;
-  z-index: 100;
+  padding: 0;
+  z-index: 10;
 }
 
 .dropdown-menu li {
-  padding: 10px 20px;
+  padding: 12px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s ease;
+  border-bottom: 1px solid #eee;
 }
 
 .dropdown-menu li:hover {
-  background: rgba(78,115,223,0.1);
+  background: #f3f4f6;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.icon-left {
-  margin-right: 6px;
-}
-
-/* ====================================================================== */
-/*                                BUTTONS                                 */
-/* ====================================================================== */
-
-.futuristic-btn {
-  background: linear-gradient(135deg, #4e73df, #1cc88a);
-  border: none;
-  padding: 10px 18px;
-  color: #ffffff;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: 0.2s ease;
-}
-
-.futuristic-btn:hover {
-  filter: brightness(1.2);
-  transform: scale(1.03);
-}
-
-.btn-secondary.futuristic-btn {
-  background: linear-gradient(135deg, #1cc88a, #4e73df);
-}
-
-.btn-sm {
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  border-radius: 6px;
-}
-
-/* ====================================================================== */
-/*                          USER SELECTION AREA                           */
-/* ====================================================================== */
-
+/* ========== USER SELECTION ========== */
 .user-selection {
-  margin: 30px 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
+  margin-bottom: 25px;
 }
 
 .input-select {
-  padding: 6px 12px;
+  padding: 8px;
   border-radius: 6px;
   border: 1px solid #ccc;
 }
 
 .input-select.small {
-  padding: 5px 8px;
+  padding: 6px;
 }
 
 .remember-user {
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin-left: auto;
+  font-size: 14px;
 }
 
-/* ====================================================================== */
-/*                               LOGS TABLE                               */
-/* ====================================================================== */
-
+/* ========== LOGS TABLE SECTION (NOW ABOVE CLOCKS) ========== */
 .logs-section {
-  width: 100%;
-  max-width: 800px;
-  margin-bottom: 40px;
-  overflow-x: auto;
+  margin-bottom: 35px;
+  background: white;
+  padding: 18px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
 }
 
 .logs-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: center;
 }
 
 .logs-table th,
 .logs-table td {
   padding: 10px;
-  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
 }
 
-.logs-table thead {
-  background: #4e73df;
-  color: #ffffff;
-  font-weight: 600;
+.logs-table th {
+  background: #f7f7f7;
+  font-weight: bold;
 }
 
-.logs-table tbody tr:hover {
-  background: rgba(78,115,223,0.1);
-  transition: background 0.2s ease;
+.btn-sm {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
-/* ====================================================================== */
-/*                          METRICS + PERFORMANCE                         */
-/* ====================================================================== */
+.btn-danger {
+  background: #e74a3b;
+  color: white;
+  border: none;
+}
 
-.metrics-container {
+.empty-row {
+  text-align: center;
+  padding: 15px;
+  font-style: italic;
+  color: gray;
+}
+
+/* ========== UNIFIED SUPER CARD (CLOCK + EXCHANGE) ========== */
+.unified-card {
   display: flex;
-  justify-content: space-between;
-  align-items: stretch;
   gap: 20px;
-  flex-wrap: wrap;
-  width: 100%;
-  margin-top: 40px;
-}
-
-.performance-card {
-  flex: 2;
-  min-width: 400px;
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.performance-title {
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: 700;
-  color: #212121;
-
-    /* Center horizontally & vertically */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  height: 50px; /* adjust if needed */
-}
-
-.small-text {
-  font-size: 0.8rem;
-  color: #555;
-  margin-top: 5px;
-}
-
-/* ====================================================================== */
-/*                              EXCHANGE CARD                             */
-/* ====================================================================== */
-
-.exchange-card {
-  width: 300px;
-  background: #ffffff;
+  background: white;
+  padding: 22px;
   border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.12);
-  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  margin-bottom: 40px;
 }
 
-.exchange-chart {
-  height: 120px;
-  width: 250px;
-  margin: 10px auto 0;
-}
-
-/* ====================================================================== */
-/*                         CLOCKS + GRADIENT BORDER                       */
-/* ====================================================================== */
-
-.top-flex-row {
-  display: flex;
-  align-items: stretch;
-  gap: 25px;
-  margin-top: 20px;
-}
-
-/* Outer animated border */
-.clock-super-card {
-  position: relative;
-  padding: 3px;
-  border-radius: 18px;
-  background: linear-gradient(0deg, #4e73df, #1cc88a, #ff00ea, #ff8800);
-  background-size: 400% 400%;
-  animation: rotateGradient 6s linear infinite;
-  width: 330px;
-}
-
-@keyframes rotateGradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Inner clock display */
-.clock-inner {
-  background: #0d1117;
-  padding: 20px;
-  border-radius: 15px;
-  color: #ffffff;
-  text-align: center;
+/* LEFT SIDE — CLOCKS */
+.clock-container {
+  flex: 1;
+  border-right: 1px solid #ddd;
+  padding-right: 20px;
 }
 
 .clock-section {
-  margin-bottom: 12px;
+  text-align: center;
+  margin-bottom: 18px;
 }
 
-/* LED neon time */
 .clock-time {
-  font-size: 2.5rem;
+  font-size: 32px;
   font-weight: bold;
-  color: #00eaff;
-  text-shadow: 0 0 8px #00eaff, 0 0 15px #00eaff;
 }
 
 .clock-date {
-  font-size: 0.95rem;
-  color: #eee;
-  opacity: 0.85;
+  font-size: 15px;
+  color: gray;
 }
 
 .clock-divider {
-  border: none;
-  border-top: 1px solid rgba(255,255,255,0.2);
-  margin: 12px 0;
+  margin: 18px 0;
 }
 
-/* ====================================================================== */
-/*                            HEATMAP CARD                                 */
-/* ====================================================================== */
+/* RIGHT SIDE — EXCHANGE RATE */
+.rate-container {
+  width: 320px;
+  text-align: center;
+}
 
+.rate-container h3 {
+  margin-bottom: 10px;
+}
+
+.rate-container h1 {
+  font-size: 36px;
+  margin: 15px 0;
+}
+
+.exchange-chart {
+  width: 100%;
+  height: 120px;
+  margin-top: 12px;
+}
+
+.small-text {
+  margin-top: 8px;
+  font-size: 13px;
+  color: gray;
+}
+
+/* ========== PERFORMANCE SECTION ========== */
+.metrics-container {
+  display: flex;
+  gap: 20px;
+}
+
+/* Metrics + Heatmap Cards */
+.performance-card {
+  flex: 1;
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.performance-card h2 {
+  margin-bottom: 15px;
+}
+
+/* ========== HEATMAP ========== */
 .heatmap-card {
-  padding: 25px;
-  border-radius: 15px;
-  background: #ffffff;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-  margin-top: 25px;
-  width: 100%; /* full width of parent */
+  flex: 1;
 }
 
 .heatmap-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 15px;
-  color: #1e293b;
-
-  /* Center horizontally & vertically */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  height: 50px;
+  font-size: 22px;
+  margin-bottom: 18px;
 }
 
 .heatmap-grid-container {
@@ -322,96 +238,89 @@
 }
 
 .heatmap-user {
-  width: 150px; /* fixed width for names, adjust as needed */
-  text-align: right; /* aligns name text to the right */
-  padding-right: 10px; /* space between name and cells */
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* trims very long names */
+  width: 120px;
+  font-size: 14px;
 }
 
 .heatmap-row-cells {
   display: flex;
-  gap: 4px; /* space between cells */
-  flex-grow: 1; /* remaining space for cells */
+  gap: 4px;
 }
 
 .heatmap-cell {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   border-radius: 4px;
-  background-color: #e0e0e0;
-  transition: background-color 0.3s;
+  background: #e0e0e0;
+  transition: 0.2s;
+  cursor: pointer;
 }
-.heatmap-cell.level-0 { background-color: #f0f0f0; }
-.heatmap-cell.level-1 { background-color: #a8dadc; }
-.heatmap-cell.level-2 { background-color: #57cc99; }
-.heatmap-cell.level-3 { background-color: #2a9d8f; }
-.heatmap-cell.level-4 { background-color: #264653; }
 
 .heatmap-cell:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+  transform: scale(1.1);
 }
 
-.level-0 { background: #e2e8f0; }
-.level-1 { background: #93c5fd; }
-.level-2 { background: #60a5fa; }
-.level-3 { background: #3b82f6; }
-.level-4 { background: #1d4ed8; }
+/* Heat Levels */
+.level-0 { background: #e0e0e0; }
+.level-1 { background: #c6dbef; }
+.level-2 { background: #6baed6; }
+.level-3 { background: #3182bd; }
+.level-4 { background: #08519c; }
 
 .heatmap-legend {
-  margin-top: 15px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .legend-box {
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 3px;
 }
-
-.legend-box.level-0 { background: #e2e8f0; }
-.legend-box.level-1 { background: #93c5fd; }
-.legend-box.level-2 { background: #60a5fa; }
-.legend-box.level-3 { background: #3b82f6; }
-.legend-box.level-4 { background: #1d4ed8; }
 
 .heatmap-subtext {
-  text-align: center;
-  font-size: 0.85rem;
-  margin-top: 10px;
-  color: #64748b;
+  margin-top: 8px;
+  font-size: 13px;
+  color: gray;
 }
 
-@media screen and (max-width: 900px) {
-  .heatmap-grid-container {
-    overflow-x: scroll;
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1000px) {
+  .unified-card {
+    flex-direction: column;
   }
-}
 
-/* ====================================================================== */
-/*                               RESPONSIVE                               */
-/* ====================================================================== */
+  .clock-container {
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+  }
 
-@media screen and (max-width: 900px) {
+  .rate-container {
+    width: 100%;
+  }
+
   .metrics-container {
     flex-direction: column;
-    align-items: center;
   }
+}
 
-  .exchange-card,
-  .performance-card {
-    width: 90%;
-    min-width: unset;
-  }
-
-  .top-flex-row {
+@media (max-width: 600px) {
+  .user-selection {
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .heatmap-user {
+    width: 80px;
+  }
+
+  .heatmap-cell {
+    width: 16px;
+    height: 16px;
   }
 }
