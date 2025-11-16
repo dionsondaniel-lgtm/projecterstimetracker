@@ -1,0 +1,273 @@
+/* ------------------- GLOBAL ------------------- */
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+.container {
+  max-width: 1150px;
+  padding: 20px;
+  margin: auto;
+  padding-bottom: 100px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+/* ------------------- BUTTONS ------------------- */
+
+button {
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 6px;
+  padding: 8px 14px;
+  border: none;
+}
+
+.btn-primary {
+  background: #0069ff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0057d6;
+}
+
+.btn-secondary {
+  background: #e1e1e1;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #d4d4d4;
+}
+
+.btn-danger {
+  background: #ff4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d93636;
+}
+
+.btn-sm {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.btn-sm.btn-secondary {
+  background: #888;
+  color: #fff;
+}
+
+.btn-sm.btn-secondary:hover {
+  background: #6c6c6c;
+}
+
+.btn-sm.btn-danger {
+  background: #e53935;
+}
+
+.btn-sm.btn-danger:hover {
+  background: #c62828;
+}
+
+/* ------------------- SELECTS ------------------- */
+
+.user-select-group {
+  margin: 20px 0;
+}
+
+.multi-select {
+  width: 250px;
+  height: 100px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+/* ------------------- TABLES ------------------- */
+
+.logs-table,
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.logs-table th,
+.summary-table th {
+  background: #f3f3f3;
+  padding: 8px;
+  font-weight: 600;
+  border-bottom: 2px solid #ddd;
+}
+
+.logs-table td,
+.summary-table td {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.logs-table tr:hover {
+  background: #fafafa;
+}
+
+.summary-table {
+  background: #fff;
+  border: 1px solid #ccc;
+}
+
+/* ------------------- EXPORT SECTION ------------------- */
+
+.export-section {
+  margin-top: 40px;
+}
+
+.range-block {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ------------------- MODALS ------------------- */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 15, 15, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-box {
+  background: white;
+  width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.modal-box h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.modal-input-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-input-group label {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.modal-input-group input,
+.modal-input-group textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.modal-input-group textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.modal-actions {
+  margin-top: 22px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ------------------- BATTERY BAR ------------------- */
+
+.battery-container {
+  margin: 15px 0 20px 0;
+}
+
+.battery-label {
+  font-size: 14px;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.battery-bar {
+  width: 100%;
+  height: 22px;
+  background: #e1e1e1;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.battery-fill {
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+/* ------------------- CALENDAR DATE PICKER MODAL ------------------- */
+
+.calendar-modal {
+  padding: 20px;
+}
+
+/* ------------------- ANIMATIONS ------------------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ------------------- RESPONSIVE ------------------- */
+
+@media (max-width: 650px) {
+  .modal-box {
+    width: 90%;
+  }
+
+  .multi-select {
+    width: 100%;
+  }
+
+  .range-block {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .container {
+    padding: 15px;
+  }
+}

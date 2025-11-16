@@ -1,28 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import weekOfYear from "dayjs/plugin/weekOfYear";
-import isBetween from "dayjs/plugin/isBetween";
-import { saveAs } from "file-saver";
 import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import weekOfYear from "dayjs/plugin/weekOfYear";
 import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
-dayjs.extend(weekOfYear);
+import TaskModal from "./TaskModal";
+import ExcelPromptModal from "./ExcelPromptModal";
+
 dayjs.extend(isBetween);
+dayjs.extend(weekOfYear);
 
 export default function Dashboard({ onBack }) {
   const [users, setUsers] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [logs, setLogs] = useState([]);
   const [allLogs, setAllLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [calendarTaskOpen, setCalendarTaskOpen] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
 
-  const today = dayjs().format("YYYY-MM-DD");
+  const [taskDate, setTaskDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [excelPromptOpen, setExcelPromptOpen] = useState(false);
 
-  // ---------------- NEW DATE RANGE STATES ----------------
   const [startDate, setStartDate] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [endDate, setEndDate] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
-  // --------------------------------------------------------
+
+  const today = dayjs().format("YYYY-MM-DD");
 
   useEffect(() => {
     fetchUsers();
@@ -30,26 +37,28 @@ export default function Dashboard({ onBack }) {
   }, []);
 
   useEffect(() => {
-    if (currentUserId) fetchLogs();
-    else setLogs([]);
-  }, [currentUserId]);
+    if (!showAllLogs) fetchFilteredLogs();
+  }, [selectedUserIds, showAllLogs]);
 
   async function fetchUsers() {
-    const { data, error } = await supabase.from("users").select("*");
-    if (error) console.error("fetchUsers error:", error);
-    else setUsers(data);
+    const { data, error } = await supabase.from("users").select("*").order("name");
+    if (!error) setUsers(data);
   }
 
-  async function fetchLogs() {
+  async function fetchFilteredLogs() {
+    if (selectedUserIds.length === 0) {
+      setLogs([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("logs")
       .select("*, user_id(name)")
-      .eq("user_id", currentUserId)
+      .in("user_id", selectedUserIds)
       .eq("date", today)
-      .order("time_in", { ascending: false });
+      .order("created_at", { ascending: false });
 
-    if (error) console.error("fetchLogs error:", error);
-    else setLogs(data);
+    if (!error) setLogs(data);
   }
 
   async function fetchAllLogs() {
@@ -57,288 +66,207 @@ export default function Dashboard({ onBack }) {
       .from("logs")
       .select("*, user_id(name)")
       .order("date", { ascending: false })
-      .order("time_in", { ascending: false });
+      .order("created_at", { ascending: false });
 
-    if (error) console.error("fetchAllLogs error:", error);
-    else setAllLogs(data);
+    if (!error) setAllLogs(data);
   }
 
-const exportToExcel = async () => {
-  if (allLogs.length === 0) {
-    alert("No logs to export!");
-    return;
-  }
-
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("All Logs");
-
-  worksheet.columns = [
-    { header: "User", key: "user", width: 20 },
-    { header: "Date", key: "date", width: 15 },
-    { header: "Time In", key: "timeIn", width: 15 },
-    { header: "Time Out", key: "timeOut", width: 15 },
-    { header: "Break (mins)", key: "breakTime", width: 15 },
-    { header: "Status", key: "status", width: 15 },
-    { header: "Hours Worked", key: "hoursWorked", width: 18 },
-  ];
-
-  let startRow = 2;
-
-  allLogs.forEach((log, i) => {
-    const rowNumber = startRow + i;
-    const row = worksheet.getRow(rowNumber);
-
-    row.getCell(1).value = log.user_id?.name || log.user_id;
-    row.getCell(2).value = log.date;
-    row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "";
-    row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "";
-    row.getCell(5).value = log.break_time ?? 0;
-    row.getCell(6).value = log.status;
-
-    // Auto hours worked
-    row.getCell(7).value = {
-      formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`
-    };
-
-    row.commit();
-  });
-
-  const lastRow = worksheet.lastRow.number;
-
-  worksheet.addTable({
-    name: `AllLogs`,
-    ref: "A1",
-    headerRow: true,
-    totalsRow: false,
-    style: { theme: "TableStyleMedium13", showRowStripes: true },
-    columns: worksheet.columns.map((col) => ({
-      name: col.header,
-      filterButton: true,
-    })),
-    rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
-  });
-
-  const buffer = await workbook.xlsx.writeBuffer();
-
-  saveAs(
-    new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-    `projecters_all_logs_${dayjs().format("YYYY-MM-DD")}.xlsx`
-  );
-};
-
-  // ---------------- NEW DATE RANGE EXPORT FUNCTION ----------------
-  const exportDateRangeToExcel = async () => {
-    if (!startDate || !endDate) {
-      alert("Please select both a start and end date.");
-      return;
-    }
-
-    const start = dayjs(startDate);
-    const end = dayjs(endDate);
-
-    if (end.isBefore(start)) {
-      alert("End date must be after start date.");
-      return;
-    }
-
-    const rangeLogs = allLogs.filter((log) =>
-      dayjs(log.date).isBetween(start, end, "day", "[]")
-    );
-
-    if (rangeLogs.length === 0) {
-      alert("No logs found in this date range.");
-      return;
-    }
-
-    const label = `${start.format("MMM_D")}-${end.format("MMM_D")}`;
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(`Logs ${label}`);
-
-    worksheet.columns = [
-      { header: "User", key: "user", width: 20 },
-      { header: "Date", key: "date", width: 15 },
-      { header: "Time In", key: "timeIn", width: 15 },
-      { header: "Time Out", key: "timeOut", width: 15 },
-      { header: "Break (mins)", key: "breakTime", width: 15 },
-      { header: "Status", key: "status", width: 15 },
-      { header: "Hours Worked", key: "hoursWorked", width: 18 },
-    ];
-
-    let startRow = 2;
-    rangeLogs.forEach((log, i) => {
-      const rowNumber = startRow + i;
-      const row = worksheet.getRow(rowNumber);
-
-      row.getCell(1).value = log.user_id?.name || log.user_id;
-      row.getCell(2).value = log.date;
-      row.getCell(3).value = log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "";
-      row.getCell(4).value = log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "";
-      row.getCell(5).value = log.break_time ?? 0;
-      row.getCell(6).value = log.status;
-
-      row.getCell(7).value = {
-        formula: `IF(D${rowNumber}="",0,(D${rowNumber}-C${rowNumber})*24-E${rowNumber}/60)`,
-      };
-
-      row.commit();
-    });
-
-    const lastRow = worksheet.lastRow.number;
-
-    worksheet.addTable({
-      name: `DateRange_${start.format("MMDD")}`,
-      ref: "A1",
-      headerRow: true,
-      totalsRow: false,
-      style: {
-        theme: "TableStyleMedium13",
-        showRowStripes: true,
-      },
-      columns: worksheet.columns.map((col) => ({
-        name: col.header,
-        filterButton: true,
-      })),
-      rows: worksheet.getRows(2, lastRow - 1).map((r) => r.values.slice(1)),
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-
-    saveAs(
-      new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }),
-      `projecters_logs_${label}.xlsx`
-    );
-  };
-  // -----------------------------------------------------------------
-
-  const punchIn = async () => {
-    if (!currentUserId) {
-      alert("Select a user");
-      return;
-    }
+  // ------------------- ADD TASK -------------------
+  async function handleTaskSave(entryList) {
     setLoading(true);
 
-    const { data: existing, error: exErr } = await supabase
-      .from("logs")
-      .select("*")
-      .eq("user_id", currentUserId)
-      .eq("date", today)
-      .is("time_out", null);
+    const inserts = entryList.map((e) => ({
+      user_id: selectedUserIds[0],
+      date: taskDate,
+      hours_worked: e.hours_worked,
+      task_done: e.task_done,
+    }));
 
-    if (existing?.length > 0) {
-      alert("You already punched in without punching out.");
-      setLoading(false);
-      return;
-    }
+    const { error } = await supabase.from("logs").insert(inserts);
 
-    await supabase.from("logs").insert([
-      {
-        user_id: currentUserId,
-        date: today,
-        time_in: new Date().toISOString(),
-        status: "Present",
-        break_time: 0,
-      },
-    ]);
-
-    await fetchLogs();
-    await fetchAllLogs();
     setLoading(false);
+    setTaskModalOpen(false);
+    setCalendarTaskOpen(false);
+    fetchFilteredLogs();
+    fetchAllLogs();
+
+    if (error) alert("Error saving tasks");
+    else alert("Tasks saved successfully");
+  }
+
+  // ----------------- DELETE LOG -----------------
+  const deleteLog = async (logId) => {
+    const proceed = window.confirm("Are you sure you want to delete this task?");
+    if (!proceed) return;
+
+    const { error } = await supabase.from("logs").delete().eq("id", logId);
+    await fetchFilteredLogs();
+    await fetchAllLogs();
+    if (!error) alert("Deleted successfully");
+    else alert("Error deleting log");
   };
 
-  const punchOut = async (log) => {
-    if (!log || log.time_out) return alert("Already punched out");
+  // ------------------- UPDATE LOG -------------------
+  const updateLog = async (log) => {
+    const newTask = prompt("Task description:", log.task_done);
+    const newHours = prompt("Hours worked:", log.hours_worked);
 
-    setLoading(true);
-    await supabase
+    if (!newTask || !newHours) return alert("Invalid input");
+
+    const { error } = await supabase
       .from("logs")
-      .update({ time_out: new Date().toISOString() })
+      .update({
+        task_done: newTask,
+        hours_worked: Number(newHours),
+      })
       .eq("id", log.id);
 
-    await fetchLogs();
-    await fetchAllLogs();
-    setLoading(false);
-  };
-
-  const setBreakTime = async (log) => {
-    const mins = prompt("Enter break minutes:", log.break_time ?? "0");
-    if (mins === null) return;
-
-    const m = parseInt(mins);
-    if (isNaN(m) || m < 0) return alert("Invalid break time");
-
-    await supabase.from("logs").update({ break_time: m }).eq("id", log.id);
-
-    fetchLogs();
+    fetchFilteredLogs();
     fetchAllLogs();
+    if (!error) alert("Updated successfully");
+    else alert("Error updating log");
   };
 
-  const deleteLog = async (logId) => {
-    const pass = prompt("Enter admin password to delete:");
-    if (pass !== "1234") return alert("❌ Incorrect password!");
+  // ------------------- EXCEL EXPORT -------------------
+  const exportExcel = async (mode, config) => {
+    const { moneyFromAlex, hourlyRate, exchangeRate } = config;
 
-    if (!window.confirm("Are you sure you want to delete this log?")) return;
+    const exportLogs =
+      mode === "all"
+        ? allLogs
+        : allLogs.filter((l) =>
+            dayjs(l.date).isBetween(startDate, endDate, "day", "[]")
+          );
 
-    await supabase.from("logs").delete().eq("id", logId);
+    if (exportLogs.length === 0) {
+      alert("No logs to export.");
+      return;
+    }
 
-    fetchAllLogs();
-    fetchLogs();
-  };
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Work Logs");
 
-  const formatTime = (iso) => (iso ? dayjs(iso).format("HH:mm:ss") : "-");
+    sheet.addRow(["Work Log Export"]);
+    sheet.addRow([]);
+    sheet.addRow(["Money From Alex (AUD)", moneyFromAlex]);
+    sheet.addRow(["Hourly Rate (AUD)", hourlyRate]);
+    sheet.addRow(["Exchange Rate (AUD→PHP)", exchangeRate]);
 
-  const updateLog = async (log) => {
-    const pass = prompt("Enter admin password to update:");
-    if (pass !== "1234") return alert("❌ Incorrect password!");
+    let workDays = countWeekdays(startDate, endDate);
+    sheet.addRow(["Working Days (Mon–Fri)", workDays]);
 
-    const newTimeIn = prompt(
-      "Enter new Time In (YYYY-MM-DD HH:mm:ss)",
-      log.time_in ? dayjs(log.time_in).format("YYYY-MM-DD HH:mm:ss") : ""
+    sheet.addRow([]);
+    sheet.addRow([
+      "User",
+      "Date",
+      "Task",
+      "Hours",
+      "Daily Total",
+      "Weekly Total",
+      "Pay AUD",
+      "Pay PHP",
+    ]);
+
+    const grouped = groupLogs(exportLogs);
+
+    grouped.forEach((entry) => {
+      entry.rows.forEach((r) => {
+        const payAUD = r.hours_worked * hourlyRate;
+        const payPHP = payAUD * exchangeRate;
+
+        sheet.addRow([
+          entry.user,
+          r.date,
+          r.task,
+          r.hours_worked,
+          entry.dailyTotals[r.date],
+          entry.weeklyTotals[r.week],
+          payAUD,
+          payPHP,
+        ]);
+      });
+    });
+
+    sheet.columns.forEach((col) => (col.width = 20));
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(
+      new Blob([buffer], { type: "application/vnd.ms-excel" }),
+      `logs_export_${dayjs().format("YYYY-MM-DD")}.xlsx`
     );
 
-    const newTimeOut = prompt(
-      "Enter new Time Out (YYYY-MM-DD HH:mm:ss)",
-      log.time_out ? dayjs(log.time_out).format("YYYY-MM-DD HH:mm:ss") : ""
-    );
-
-    const newBreak = prompt("Enter new Break minutes:", log.break_time ?? "0");
-
-    const updates = {};
-    if (newTimeIn) updates.time_in = dayjs(newTimeIn).toISOString();
-    if (newTimeOut) updates.time_out = dayjs(newTimeOut).toISOString();
-    if (newBreak) updates.break_time = parseInt(newBreak);
-
-    await supabase.from("logs").update(updates).eq("id", log.id);
-
-    fetchAllLogs();
-    fetchLogs();
-    alert("Updated!");
+    setExcelPromptOpen(false);
   };
 
+  function groupLogs(logs) {
+    const grouped = {};
+
+    logs.forEach((l) => {
+      const user = l.user_id?.name;
+      const week = dayjs(l.date).week();
+
+      if (!grouped[user]) {
+        grouped[user] = {
+          user,
+          rows: [],
+          dailyTotals: {},
+          weeklyTotals: {},
+        };
+      }
+
+      grouped[user].rows.push({
+        date: l.date,
+        task: l.task_done,
+        hours_worked: Number(l.hours_worked),
+        week,
+      });
+
+      grouped[user].dailyTotals[l.date] =
+        (grouped[user].dailyTotals[l.date] || 0) + Number(l.hours_worked);
+      grouped[user].weeklyTotals[week] =
+        (grouped[user].weeklyTotals[week] || 0) + Number(l.hours_worked);
+    });
+
+    return Object.values(grouped);
+  }
+
+  function countWeekdays(start, end) {
+    let day = dayjs(start);
+    const last = dayjs(end);
+    let count = 0;
+
+    while (day.isBefore(last) || day.isSame(last)) {
+      const weekday = day.day();
+      if (weekday >= 1 && weekday <= 5) count++;
+      day = day.add(1, "day");
+    }
+
+    return count;
+  }
+
+  // ------------------- TOTAL HOURS TODAY -------------------
+  const totalHoursToday = logs.reduce((sum, l) => sum + Number(l.hours_worked), 0);
+
+  // ------------------- RENDER -------------------
   return (
     <div className="container">
-      <h1>Projecters Time Management Dashboard</h1>
+      <h1>Projecters Task-Based Dashboard</h1>
 
-      <button className="btn-secondary" onClick={onBack} style={{ marginBottom: 20 }}>
-        ← Back to Main
+      <button className="btn-secondary" onClick={onBack}>
+        ← Back
       </button>
 
-      {/* Select User */}
-      <div style={{ marginBottom: 15 }}>
-        <label htmlFor="user-select" style={{ fontWeight: "bold" }}>
-          Select User:
-        </label>
+      {/* MULTI-SELECT */}
+      <div className="user-select-group">
+        <label>Select User(s):</label>
         <select
-          id="user-select"
-          value={currentUserId}
-          onChange={(e) => setCurrentUserId(e.target.value)}
-          className="input-select"
-          style={{ marginLeft: 10 }}
+          multiple
+          className="multi-select"
+          value={selectedUserIds}
+          onChange={(e) =>
+            setSelectedUserIds([...e.target.selectedOptions].map((o) => o.value))
+          }
         >
-          <option value="">-- Please select a user --</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name}
@@ -347,50 +275,68 @@ const exportToExcel = async () => {
         </select>
       </div>
 
-      {/* Punch In */}
+      {/* ADD TASK TODAY */}
       <button
         className="btn-primary"
-        onClick={punchIn}
-        disabled={!currentUserId || loading}
-        style={{ marginBottom: 20 }}
+        disabled={selectedUserIds.length !== 1}
+        onClick={() => {
+          setTaskDate(today);
+          setTaskModalOpen(true);
+        }}
       >
-        Punch In
+        ➕ Add Today's Task (Total Hours: {totalHoursToday})
       </button>
 
-      {/* Today's Logs */}
-      <h3>Today's Logs — {today}</h3>
+      {/* ADD TASK SPECIFIC DATE */}
+      <button
+        className="btn-secondary"
+        disabled={selectedUserIds.length !== 1}
+        onClick={() => setCalendarTaskOpen(true)}
+      >
+        📅 Add Task for Specific Date
+      </button>
+
+      {/* SHOW/HIDE ALL TASKS */}
+      <button
+        className="btn-info"
+        onClick={() => {
+          setShowAllLogs(!showAllLogs);
+          if (!showAllLogs) setLogs(allLogs);
+          else fetchFilteredLogs();
+        }}
+      >
+        {showAllLogs ? "📋 Show Selected User(s) Logs" : "📋 Show All Logs"}
+      </button>
+
+      {/* LOGS TABLE */}
+      <h2>{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
       {logs.length === 0 ? (
-        <p className="empty-row">No logs recorded for today.</p>
+        <p>No tasks logged.</p>
       ) : (
         <table className="logs-table">
           <thead>
             <tr>
-              <th>Time In</th>
-              <th>Time Out</th>
-              <th>Break</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>User</th>
+              <th>Date</th>
+              <th>Task</th>
+              <th>Hours</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => (
-              <tr key={log.id}>
-                <td>{formatTime(log.time_in)}</td>
-                <td>{formatTime(log.time_out)}</td>
+            {logs.map((l) => (
+              <tr key={l.id}>
+                <td>{l.user_id?.name}</td>
+                <td>{l.date}</td>
+                <td>{l.task_done}</td>
+                <td>{l.hours_worked}</td>
                 <td>
-                  <button className="btn-sm btn-info" onClick={() => setBreakTime(log)}>
-                    {log.break_time ?? 0}
+                  <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>
+                    Edit
                   </button>
-                </td>
-                <td>{log.status}</td>
-                <td>
-                  {!log.time_out ? (
-                    <button className="btn-sm btn-danger" onClick={() => punchOut(log)}>
-                      Punch Out
-                    </button>
-                  ) : (
-                    "Completed"
-                  )}
+                  <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>
+                    Del
+                  </button>
                 </td>
               </tr>
             ))}
@@ -398,102 +344,45 @@ const exportToExcel = async () => {
         </table>
       )}
 
-      <hr style={{ margin: "40px 0" }} />
+      {/* EXPORT */}
+      <div className="export-section">
+        <button className="btn-primary" onClick={() => setExcelPromptOpen(true)}>
+          📊 Export All Logs
+        </button>
 
-      {/* Buttons + Date Range */}
-      <div style={{ marginBottom: 25 }}>
-        {/* First Row */}
-        <div style={{ marginBottom: 10 }}>
-          <button
-            className="btn-secondary"
-            onClick={async () => {
-              const nextState = !showAllLogs;
-              setShowAllLogs(nextState);
-              nextState ? fetchAllLogs() : fetchLogs();
-            }}
-            style={{ marginRight: 10 }}
-          >
-            {showAllLogs ? "Hide All Logs" : "View All Logs"}
-          </button>
-
-          <button className="btn-primary" onClick={exportToExcel} style={{ marginRight: 10 }}>
-            Export All Logs
+        <div className="range-block">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <span>to</span>
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <button className="btn-primary" onClick={() => setExcelPromptOpen("range")}>
+            📊 Export Date Range
           </button>
         </div>
-
-        {/* ---------------- NEW DATE RANGE UI ---------------- */}
-        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
-          <label style={{ fontWeight: "bold" }}>Select Date Range:</label>
-
-          <input
-            type="date"
-            className="input-select"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-
-          <span style={{ fontWeight: "bold" }}>to</span>
-
-          <input
-            type="date"
-            className="input-select"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-
-          <button className="btn-primary" onClick={exportDateRangeToExcel}>
-            Export Selected Date Range
-          </button>
-        </div>
-        {/* ----------------------------------------------------- */}
       </div>
 
-      {/* All Logs Table */}
-      {showAllLogs && (
-        <>
-          {allLogs.length === 0 ? (
-            <p className="empty-row">No log entries available.</p>
-          ) : (
-            <table className="logs-table" style={{ fontSize: "0.9rem" }}>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Date</th>
-                  <th>Time In</th>
-                  <th>Time Out</th>
-                  <th>Break</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{log.user_id?.name || log.user_id}</td>
-                    <td>{log.date}</td>
-                    <td>{formatTime(log.time_in)}</td>
-                    <td>{formatTime(log.time_out)}</td>
-                    <td>{log.break_time ?? 0}</td>
-                    <td>{log.status}</td>
-                    <td>
-                      <button
-                        className="btn-sm btn-danger"
-                        style={{ marginRight: 8 }}
-                        onClick={() => deleteLog(log.id)}
-                      >
-                        Delete
-                      </button>
-                      <button className="btn-sm btn-secondary" onClick={() => updateLog(log)}>
-                        Update
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
+      {/* MODALS */}
+      <TaskModal
+        isOpen={taskModalOpen}
+        selectedDate={taskDate}
+        existingEntries={[]}
+        onSave={handleTaskSave}
+        onClose={() => setTaskModalOpen(false)}
+      />
+      <TaskModal
+        isOpen={calendarTaskOpen}
+        selectedDate={taskDate}
+        existingEntries={[]}
+        onSave={handleTaskSave}
+        onClose={() => setCalendarTaskOpen(false)}
+      />
+
+      <ExcelPromptModal
+        isOpen={excelPromptOpen !== false}
+        onCancel={() => setExcelPromptOpen(false)}
+        onConfirm={(conf) =>
+          exportExcel(excelPromptOpen === true ? "all" : "range", conf)
+        }
+      />
     </div>
   );
 }

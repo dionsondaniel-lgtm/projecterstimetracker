@@ -2,43 +2,32 @@
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import dayjs from "dayjs";
-import { FaBars, FaClock, FaUserPlus, FaChartLine } from "react-icons/fa";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { FaBars, FaUserPlus, FaClock, FaPlus } from "react-icons/fa";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 
-import "./AdminDashboard.css";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(weekOfYear);
 
-export default function AdminDashboard({ toRegister, toDashboard }) {
+export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
   const [users, setUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
+  const [showAllLogs, setShowAllLogs] = useState(false);
+
   const [currentUserId, setCurrentUserId] = useState("");
   const [rememberUser, setRememberUser] = useState(false);
 
-  const [todayUserLogs, setTodayUserLogs] = useState([]);
-  const [todayAllUserLogs, setTodayAllUserLogs] = useState([]);
-  const [weekAllUserLogs, setWeekAllUserLogs] = useState([]);
-  const [runningAllUserLogs, setRunningAllUserLogs] = useState([]);
-
-  const [loading, setLoading] = useState(false);
-
-  // EXCHANGE RATE
   const [ratePHP, setRatePHP] = useState(null);
   const [exchangeError, setExchangeError] = useState("");
+  const [currency, setCurrency] = useState("AUD");
 
-  const [currency, setCurrency] = useState("AUD"); // default (PH clock static)
   const dropdownRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // ---------- CLOCK STATES ----------
   const [phTime, setPhTime] = useState("");
   const [phDate, setPhDate] = useState("");
   const [selectedTZ, setSelectedTZ] = useState("Australia/Sydney");
@@ -62,176 +51,44 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
   ];
 
   const today = dayjs().format("YYYY-MM-DD");
-  const weekStart = dayjs().startOf("week").format("YYYY-MM-DD");
 
-  // ---------- INIT LOAD ----------
+  // ----------------- INITIAL LOAD -----------------
   useEffect(() => {
-    const storedUserId = localStorage.getItem("rememberedUserId");
-    if (storedUserId) {
-      setCurrentUserId(storedUserId);
+    fetchUsers();
+    fetchAllLogs();
+    updateClocks();
+    const clockInterval = setInterval(updateClocks, 1000);
+    const exchangeInterval = setInterval(() => fetchExchangeRate(currency), 10 * 60 * 1000);
+
+    const savedUser = localStorage.getItem("rememberUserId");
+    if (savedUser) {
+      setCurrentUserId(savedUser);
       setRememberUser(true);
     }
 
-    fetchUsers();
-    fetchTodayAllUserLogs();
-    fetchWeekAllUserLogs();
-    fetchRunningAllUserLogs();
-
-    // Fetch exchange for default timezone
-    fetchExchangeRate(currency);
-
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
+    return () => {
+      clearInterval(clockInterval);
+      clearInterval(exchangeInterval);
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Auto-refresh exchange every 10 min
-  useEffect(() => {
-    const interval = setInterval(() => fetchExchangeRate(currency), 600000);
-    return () => clearInterval(interval);
-  }, [currency]);
+  // ----------------- FETCH USERS -----------------
+  async function fetchUsers() {
+    const { data, error } = await supabase.from("users").select("*").order("name");
+    if (!error) setUsers(data);
+  }
 
-  // Load user logs when user changes
-  useEffect(() => {
-    if (currentUserId) fetchTodayUserLogs();
-    else setTodayUserLogs([]);
-
-    if (rememberUser) localStorage.setItem("rememberedUserId", currentUserId);
-    else localStorage.removeItem("rememberedUserId");
-  }, [currentUserId, rememberUser]);
-
-  // ---------- CLOCK UPDATER ----------
-  useEffect(() => {
-    const updateClocks = () => {
-      setPhTime(
-        new Date().toLocaleString("en-US", {
-          timeZone: "Asia/Manila",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        })
-      );
-
-      setPhDate(
-        new Date().toLocaleDateString("en-US", {
-          timeZone: "Asia/Manila",
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      );
-
-      setOtherTime(
-        new Date().toLocaleString("en-US", {
-          timeZone: selectedTZ,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        })
-      );
-
-      setOtherDate(
-        new Date().toLocaleDateString("en-US", {
-          timeZone: selectedTZ,
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      );
-    };
-
-    updateClocks();
-    const interval = setInterval(updateClocks, 1000);
-    return () => clearInterval(interval);
-  }, [selectedTZ]);
-
-  // ---------- SUPABASE FETCHERS ----------
-  const fetchUsers = async () => {
-    const { data } = await supabase.from("users").select("*");
-    if (data) setUsers(data);
-  };
-
-  const fetchTodayUserLogs = async () => {
-    const { data } = await supabase
+  // ----------------- FETCH LOGS -----------------
+  async function fetchAllLogs() {
+    const { data, error } = await supabase
       .from("logs")
-      .select("*")
-      .eq("user_id", currentUserId)
-      .eq("date", today);
-    if (data) setTodayUserLogs(data);
-  };
+      .select("*, user_id(name)")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
 
-  const fetchTodayAllUserLogs = async () => {
-    const { data } = await supabase.from("logs").select("*").eq("date", today);
-    if (data) setTodayAllUserLogs(data);
-  };
-
-  const fetchWeekAllUserLogs = async () => {
-    const { data } = await supabase.from("logs").select("*").gte("date", weekStart);
-    if (data) setWeekAllUserLogs(data);
-  };
-
-  const fetchRunningAllUserLogs = async () => {
-    const { data } = await supabase.from("logs").select("*");
-    if (data) setRunningAllUserLogs(data);
-  };
-
-  // ---------- METRICS ----------
-  const computeMetrics = (logs) => {
-    let totalWorkMs = 0;
-    let totalBreakMins = 0;
-
-    logs.forEach((log) => {
-      if (log.time_in && log.time_out) {
-        const inTime = new Date(log.time_in).getTime();
-        const outTime = new Date(log.time_out).getTime();
-        const breakMs = (log.break_time ?? 0) * 60000;
-        totalWorkMs += Math.max(0, outTime - inTime - breakMs);
-      }
-      totalBreakMins += log.break_time ?? 0;
-    });
-
-    return {
-      workHours: +(totalWorkMs / 3600000).toFixed(2),
-      breakMins: totalBreakMins,
-    };
-  };
-
-  const userTodayMetrics = computeMetrics(todayUserLogs);
-  const allTodayMetrics = computeMetrics(todayAllUserLogs);
-  const weekMetrics = computeMetrics(weekAllUserLogs);
-  const runningMetrics = computeMetrics(runningAllUserLogs);
-
-  const chartData = [
-    {
-      category: "User Today",
-      Work: userTodayMetrics.workHours,
-      Break: +(userTodayMetrics.breakMins / 60).toFixed(2),
-    },
-    {
-      category: "All Users Today",
-      Work: allTodayMetrics.workHours,
-      Break: +(allTodayMetrics.breakMins / 60).toFixed(2),
-    },
-    {
-      category: "This Week",
-      Work: weekMetrics.workHours,
-      Break: +(weekMetrics.breakMins / 60).toFixed(2),
-    },
-    {
-      category: "Total",
-      Work: runningMetrics.workHours,
-      Break: +(runningMetrics.breakMins / 60).toFixed(2),
-    },
-  ];
+    if (!error) setAllLogs(data);
+    if (!showAllLogs) setLogs(data.filter((l) => l.date === today));
+  }
 
   // ---------- EXCHANGE RATE FETCHER ----------
   const fetchExchangeRate = async (currencyCode) => {
@@ -250,88 +107,101 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
     }
   };
 
-  // On timezone change → update currency → fetch rate
-  const handleTimezoneChange = (value) => {
-    setSelectedTZ(value);
+  // ----------------- CLOCKS -----------------
+  function updateClocks() {
+    const ph = dayjs().tz("Asia/Manila");
+    setPhTime(ph.format("HH:mm:ss"));
+    setPhDate(ph.format("YYYY-MM-DD"));
 
-    const newCurrency = timezoneCurrencyMap[value];
-    setCurrency(newCurrency);
+    const other = dayjs().tz(selectedTZ);
+    setOtherTime(other.format("HH:mm:ss"));
+    setOtherDate(other.format("YYYY-MM-DD"));
+  }
 
-    fetchExchangeRate(newCurrency);
+  function handleTimezoneChange(tz) {
+    const curr = timezoneCurrencyMap[tz] || "AUD";
+    setSelectedTZ(tz);
+    setCurrency(curr);
+    updateClocks();
+    fetchExchangeRate(curr);
+  }
+
+  // ----------------- UPDATE LOG -----------------
+  const updateLog = async (log) => {
+    const proceed = window.confirm("Do you want to edit this task?");
+    if (!proceed) return;
+
+    const newTask = prompt("Task description:", log.task_done);
+    const newHours = prompt("Hours worked:", log.hours_worked);
+
+    if (!newTask || !newHours) return alert("Invalid input");
+
+    const { error } = await supabase
+      .from("logs")
+      .update({
+        task_done: newTask,
+        hours_worked: Number(newHours),
+      })
+      .eq("id", log.id);
+
+    await fetchAllLogs();
+    if (!error) alert("Updated successfully");
+    else alert("Error updating log");
   };
 
-  // ---------- PUNCH IN ----------
-  const punchIn = async () => {
-    if (!currentUserId) return alert("Please select a user.");
-    setLoading(true);
+  // ----------------- DELETE LOG -----------------
+  const deleteLog = async (logId) => {
+    const proceed = window.confirm("Are you sure you want to delete this task?");
+    if (!proceed) return;
 
-    try {
-      const { data: existing } = await supabase
-        .from("logs")
-        .select("*")
-        .eq("user_id", currentUserId)
-        .eq("date", today)
-        .is("time_out", null);
+    const { error } = await supabase.from("logs").delete().eq("id", logId);
+    await fetchAllLogs();
+    if (!error) alert("Deleted successfully");
+    else alert("Error deleting log");
+  };
 
-      if (existing.length > 0) {
-        alert("There is already an open log entry.");
-        setLoading(false);
-        return;
-      }
+  // ----------------- ADD TODAY'S TASK -----------------
+  const addTodaysTask = async () => {
+    if (!currentUserId) return alert("Please select a user first");
 
-      await supabase.from("logs").insert([
-        {
-          user_id: currentUserId,
-          date: today,
-          time_in: new Date().toISOString(),
-          status: "Present",
-          break_time: 0,
-        },
-      ]);
+    const proceed = window.confirm("Do you want to add a new task for today?");
+    if (!proceed) return;
 
-      await fetchTodayUserLogs();
-      await fetchTodayAllUserLogs();
-      await fetchWeekAllUserLogs();
-      await fetchRunningAllUserLogs();
-    } finally {
-      setLoading(false);
+    const task = prompt("Enter task description:");
+    const hours = prompt("Enter hours worked:");
+    if (!task || !hours) return alert("Invalid input");
+
+    const { error } = await supabase.from("logs").insert({
+      user_id: currentUserId,
+      date: today,
+      task_done: task,
+      hours_worked: Number(hours),
+    });
+
+    await fetchAllLogs();
+    if (!error) alert("Task added successfully");
+    else alert("Error adding task");
+  };
+
+  // ----------------- REMEMBER USER -----------------
+  useEffect(() => {
+    if (rememberUser && currentUserId) {
+      localStorage.setItem("rememberUserId", currentUserId);
+    } else {
+      localStorage.removeItem("rememberUserId");
     }
-  };
+  }, [rememberUser, currentUserId]);
 
-  // ---------- PUNCH OUT ----------
-  const punchOut = async (log) => {
-    if (!log || log.time_out) return;
-
-    setLoading(true);
-    try {
-      await supabase.from("logs").update({ time_out: new Date().toISOString() }).eq("id", log.id);
-
-      await fetchTodayUserLogs();
-      await fetchTodayAllUserLogs();
-      await fetchWeekAllUserLogs();
-      await fetchRunningAllUserLogs();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ---------- HEATMAP DATA ----------
-  const allUsers = users.map((u) => ({
-    ...u,
-    logs: runningAllUserLogs.filter((log) => log.user_id === u.id) || [],
-  }));
-
-  // ---------- JSX ----------
+  // ----------------- RENDER -----------------
   return (
     <div className="admin-container">
       <h1 className="admin-title">Projecters Time Tracking System</h1>
 
-      {/* -------- Dropdown -------- */}
+      {/* -------- DROPDOWN -------- */}
       <div className="dropdown-container" ref={dropdownRef}>
         <button className="futuristic-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
           <FaBars className="icon-left" /> Actions
         </button>
-
         {dropdownOpen && (
           <ul className="dropdown-menu">
             <li onClick={() => { toRegister(); setDropdownOpen(false); }}>
@@ -344,10 +214,9 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
         )}
       </div>
 
-      {/* -------- USER SELECTION -------- */}
+      {/* -------- USER SELECTION + ADD TASK -------- */}
       <div className="user-selection">
         <label>Select User:</label>
-
         <select
           value={currentUserId}
           onChange={(e) => setCurrentUserId(e.target.value)}
@@ -359,66 +228,68 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
           ))}
         </select>
 
-        <button
-          className="futuristic-btn"
-          onClick={punchIn}
-          disabled={!currentUserId || loading}
-        >
-          <FaClock className="icon-left" /> Punch In
+        <button className="futuristic-btn" onClick={addTodaysTask}>
+          <FaPlus /> Add Today's Task
         </button>
 
         <label className="remember-user">
-          <input type="checkbox" checked={rememberUser} onChange={() => setRememberUser(!rememberUser)} />
+          <input
+            type="checkbox"
+            checked={rememberUser}
+            onChange={() => setRememberUser(!rememberUser)}
+          />
           Remember my user
         </label>
       </div>
 
-      {/* -------- USER LOGS SECTION (MOVED ABOVE CLOCKS) -------- */}
-      <div className="logs-section">
-        <h4>User Logs for {today}</h4>
+      {/* -------- LOGS TABLE -------- */}
+      <button
+        className="btn-info"
+        onClick={() => {
+          setShowAllLogs(!showAllLogs);
+          if (!showAllLogs) setLogs(allLogs);
+          else setLogs(allLogs.filter((l) => l.date === today));
+        }}
+      >
+        {showAllLogs ? "📋 Show Today's Logs" : "📋 Show All Logs"}
+      </button>
 
-        {todayUserLogs.length === 0 ? (
-          <p className="empty-row">No log entries today.</p>
-        ) : (
-          <table className="logs-table">
-            <thead>
-              <tr>
-                <th>Time In</th>
-                <th>Time Out</th>
-                <th>Break (mins)</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {todayUserLogs.map((log) => (
-                <tr key={log.id}>
-                  <td>{log.time_in ? dayjs(log.time_in).format("HH:mm:ss") : "-"}</td>
-                  <td>{log.time_out ? dayjs(log.time_out).format("HH:mm:ss") : "-"}</td>
-                  <td>{log.break_time ?? 0}</td>
+      <h2 className="tasks-title">{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
+      {logs.length === 0 ? (
+        <p>No tasks logged.</p>
+      ) : (
+        <table className="logs-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Date</th>
+              <th>Task</th>
+              <th>Hours</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((l) => {
+              const payPHP = ratePHP ? Number(l.hours_worked) * ratePHP : 0;
+              return (
+                <tr key={l.id}>
+                  <td>{l.user_id?.name}</td>
+                  <td>{l.date}</td>
+                  <td>{l.task_done}</td>
+                  <td>{l.hours_worked}</td>
                   <td>
-                    {!log.time_out && (
-                      <button
-                        className="btn-sm btn-danger"
-                        disabled={loading}
-                        onClick={() => punchOut(log)}
-                      >
-                        Punch Out
-                      </button>
-                    )}
+                    <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>Edit</button>
+                    <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>Del</button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-
-          </table>
-        )}
-      </div>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
 
       {/* -------- UNIFIED CLOCK + EXCHANGE CARD -------- */}
       <div className="unified-card">
-
-        {/* LEFT — CLOCKS */}
         <div className="clock-container">
           <div className="clock-section">
             <h3>🇵🇭 Philippines</h3>
@@ -430,7 +301,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
 
           <div className="clock-section">
             <h3>🌍 Other Country</h3>
-
             <select
               className="input-select small"
               value={selectedTZ}
@@ -440,16 +310,13 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
                 <option key={tz.value} value={tz.value}>{tz.label}</option>
               ))}
             </select>
-
             <h1 className="clock-time">{otherTime}</h1>
             <p className="clock-date">{otherDate}</p>
           </div>
         </div>
 
-        {/* RIGHT — EXCHANGE RATE */}
         <div className="rate-container">
           <h3>{currency} → PHP</h3>
-
           {exchangeError ? (
             <p style={{ color: "red" }}>{exchangeError}</p>
           ) : ratePHP ? (
@@ -465,12 +332,16 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
           <div className="exchange-chart">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={[
-                  { value: ratePHP - 0.2 },
-                  { value: ratePHP - 0.1 },
-                  { value: ratePHP - 0.05 },
-                  { value: ratePHP },
-                ]}
+                data={
+                  ratePHP
+                    ? [
+                        { value: ratePHP - 0.2 },
+                        { value: ratePHP - 0.1 },
+                        { value: ratePHP - 0.05 },
+                        { value: ratePHP },
+                      ]
+                    : []
+                }
               >
                 <Line type="monotone" dataKey="value" stroke="#4e73df" strokeWidth={2} dot={false} />
               </LineChart>
@@ -478,83 +349,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
           </div>
 
           <p className="small-text">Auto-updates every 10 minutes</p>
-        </div>
-      </div>
-
-      {/* -------- PERFORMANCE METRICS -------- */}
-      <div className="metrics-container">
-        <div className="performance-card">
-          <h2>Performance Metrics</h2>
-
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d0d0d0" />
-              <XAxis dataKey="category" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-
-              <Bar dataKey="Work" fill="#4e73df" />
-              <Bar dataKey="Break" fill="#1cc88a" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* -------- HEATMAP -------- */}
-        <div className="heatmap-card performance-card">
-          <h2 className="heatmap-title">User Activity Heatmap</h2>
-
-          <div className="heatmap-grid-container">
-            {allUsers.map((user) => (
-              <div className="heatmap-row" key={user.id}>
-                <div className="heatmap-user">{user.name}</div>
-                <div className="heatmap-row-cells">
-                  {Array.from({ length: 14 }).map((_, dayIdx) => {
-                    const date = dayjs().subtract(dayIdx, "day");
-                    const logs = user.logs.filter((l) => dayjs(l.date).isSame(date, "day")) || [];
-
-                    const hoursWorked = logs.reduce((total, log) => {
-                      if (log.time_in && log.time_out) {
-                        const inTime = new Date(log.time_in).getTime();
-                        const outTime = new Date(log.time_out).getTime();
-                        const breakMs = (log.break_time ?? 0) * 60000;
-                        return total + Math.max(0, outTime - inTime - breakMs);
-                      }
-                      return total;
-                    }, 0);
-
-                    const hoursWorkedDisplay = (hoursWorked / 3600000).toFixed(2);
-
-                    const level =
-                      logs.length >= 6 ? 4 :
-                      logs.length >= 4 ? 3 :
-                      logs.length >= 2 ? 2 :
-                      logs.length >= 1 ? 1 : 0;
-
-                    return (
-                      <div
-                        key={dayIdx}
-                        className={`heatmap-cell level-${level}`}
-                        title={`${date.format("MMM DD, YYYY")} — ${logs.length} log(s), ${hoursWorkedDisplay}h worked`}
-                      ></div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="heatmap-legend">
-            <span>Less</span>
-            <div className="legend-box level-0"></div>
-            <div className="legend-box level-1"></div>
-            <div className="legend-box level-2"></div>
-            <div className="legend-box level-3"></div>
-            <div className="legend-box level-4"></div>
-            <span>More</span>
-          </div>
-
-          <p className="heatmap-subtext">Past 14 days</p>
         </div>
       </div>
     </div>
