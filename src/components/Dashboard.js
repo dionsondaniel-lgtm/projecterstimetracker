@@ -320,7 +320,7 @@ const exportToExcel = async () => {
 
   return (
     <div className="container">
-      <h1>Projecters Time Tracking Dashboard</h1>
+      <h1>Projecters Time Management Dashboard</h1>
 
       <button className="btn-secondary" onClick={onBack} style={{ marginBottom: 20 }}>
         ← Back to Main

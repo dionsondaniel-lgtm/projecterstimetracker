@@ -18,7 +18,7 @@ import {
 
 import "./AdminDashboard.css";
 
-export default function AdminDashboard({ toRegister, toDashboard, toUserDashboard }) {
+export default function AdminDashboard({ toRegister, toDashboard }) {
   const [users, setUsers] = useState([]);
   const [currentUserId, setCurrentUserId] = useState("");
   const [rememberUser, setRememberUser] = useState(false);
@@ -324,7 +324,7 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
   // ---------- JSX ----------
   return (
     <div className="admin-container">
-      <h1 className="admin-title">Projecters Time Management Dashboard</h1>
+      <h1 className="admin-title">Projecters Time Tracking System</h1>
 
       {/* -------- Dropdown -------- */}
       <div className="dropdown-container" ref={dropdownRef}>
@@ -337,11 +337,8 @@ export default function AdminDashboard({ toRegister, toDashboard, toUserDashboar
             <li onClick={() => { toRegister(); setDropdownOpen(false); }}>
               <FaUserPlus className="icon-left" /> Register New User
             </li>
-            <li onClick={() => { toUserDashboard(); setDropdownOpen(false); }}>
-              <FaChartLine className="icon-left" /> Users Dashboard
-            </li>
             <li onClick={() => { toDashboard(); setDropdownOpen(false); }}>
-              <FaClock className="icon-left" /> View User Logs
+              <FaClock className="icon-left" /> Manage Time Logs
             </li>
           </ul>
         )}
