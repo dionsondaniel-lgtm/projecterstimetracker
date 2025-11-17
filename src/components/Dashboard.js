@@ -8,6 +8,7 @@ import { saveAs } from "file-saver";
 
 import TaskModal from "./TaskModal";
 import ExcelPromptModal from "./ExcelPromptModal";
+import SpecificTaskModal from "./SpecificTaskModal";
 
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
@@ -72,27 +73,27 @@ export default function Dashboard({ onBack }) {
   }
 
   // ------------------- ADD TASK -------------------
-  async function handleTaskSave(entryList) {
-    setLoading(true);
+  async function handleTaskSave(entryList, pickedDate) {
+  setLoading(true);
 
-    const inserts = entryList.map((e) => ({
-      user_id: selectedUserIds[0],
-      date: taskDate,
-      hours_worked: e.hours_worked,
-      task_done: e.task_done,
-    }));
+  const inserts = entryList.map((e) => ({
+    user_id: selectedUserIds[0],
+    date: pickedDate,               // <<< Use selected date!!!
+    hours_worked: e.hours_worked,
+    task_done: e.task_done,
+  }));
 
-    const { error } = await supabase.from("logs").insert(inserts);
+  const { error } = await supabase.from("logs").insert(inserts);
 
-    setLoading(false);
-    setTaskModalOpen(false);
-    setCalendarTaskOpen(false);
-    fetchFilteredLogs();
-    fetchAllLogs();
+  setLoading(false);
+  setTaskModalOpen(false);
+  setCalendarTaskOpen(false);
+  fetchFilteredLogs();
+  fetchAllLogs();
 
-    if (error) alert("Error saving tasks");
-    else alert("Tasks saved successfully");
-  }
+  if (error) alert("Error saving tasks");
+  else alert("Tasks saved successfully");
+}
 
   // ----------------- DELETE LOG -----------------
   const deleteLog = async (logId) => {
@@ -250,7 +251,7 @@ export default function Dashboard({ onBack }) {
   // ------------------- RENDER -------------------
   return (
     <div className="container">
-      <h1>Projecters Task-Based Dashboard</h1>
+      <h1>Projecters Task Management Dashboard</h1>
 
       <button className="btn-secondary" onClick={onBack}>
         ← Back
@@ -367,13 +368,17 @@ export default function Dashboard({ onBack }) {
         existingEntries={[]}
         onSave={handleTaskSave}
         onClose={() => setTaskModalOpen(false)}
+        userId={selectedUserIds[0]}
+        fullName={users.find(u => u.id === selectedUserIds[0])?.name || "User"}
       />
-      <TaskModal
+      <SpecificTaskModal
         isOpen={calendarTaskOpen}
         selectedDate={taskDate}
         existingEntries={[]}
         onSave={handleTaskSave}
         onClose={() => setCalendarTaskOpen(false)}
+        userId={selectedUserIds[0]}
+        fullName={users.find(u => u.id === selectedUserIds[0])?.name || "User"}
       />
 
       <ExcelPromptModal

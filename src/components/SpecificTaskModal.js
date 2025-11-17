@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import "./Dashboard.css";
 import "./AdminDashboard.css";
 
-export default function TaskModal({
+export default function SpecificTaskModal({
   isOpen,
   onClose,
   onSave,
@@ -11,7 +11,7 @@ export default function TaskModal({
   selectedDate: initialDate,
   maxHours = 7.5,
   userId,
-  fullName = "User", // 👈 New prop for greeting
+  fullName = "User" // Greeting name
 }) {
   const [task, setTask] = useState("");
   const [hours, setHours] = useState("");
@@ -19,12 +19,15 @@ export default function TaskModal({
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [hoursUsed, setHoursUsed] = useState(0);
 
-  // Format readable date: "January 25, 2025"
-  const formattedToday = new Date(initialDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // Format date into something readable: January 25, 2025
+  const formattedSelectedDate = new Date(selectedDate).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -52,18 +55,24 @@ export default function TaskModal({
     Number(entries.reduce((sum, e) => sum + Number(e.hours_worked), 0)) +
     hoursUsed;
 
-  const remaining = maxHours - totalToday;
-
   const addEntry = () => {
     if (!task.trim()) return alert("Task is required.");
     if (!hours || isNaN(hours)) return alert("Enter valid hours.");
+
     const hoursNum = Number(hours);
     if (hoursNum <= 0) return alert("Hours must be positive.");
 
     const newTotal = totalToday + hoursNum;
 
+    // Updated warning message with selected date
     if (newTotal > maxHours) {
-      if (!window.confirm(`You are exceeding today's limit. Continue?`)) return;
+      if (
+        !window.confirm(
+          `You are exceeding the limit for ${formattedSelectedDate}. Continue?`
+        )
+      ) {
+        return;
+      }
     }
 
     setEntries([...entries, { task_done: task, hours_worked: hoursNum }]);
@@ -82,18 +91,24 @@ export default function TaskModal({
           Hi <strong>{fullName}</strong>!
         </h2>
 
-        {/* Subtitle */}
         <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#555" }}>
-          Add Task for Today ({formattedToday})
+          Select a date and add a task(s)
         </h3>
 
-        {/* DATE (fixed/disabled) */}
+        {/* ENABLED DATE PICKER */}
         <div className="modal-input-group">
           <label>Date</label>
-          <input type="date" value={selectedDate} disabled />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              fetchDateHours(e.target.value);
+            }}
+          />
         </div>
 
-        {/* Remaining hours battery */}
+        {/* Battery */}
         <div className="battery-container">
           <div className="battery-label">
             Hours used: {totalToday.toFixed(2)} / {maxHours}
@@ -158,6 +173,7 @@ export default function TaskModal({
           </tbody>
         </table>
 
+        {/* Save / Cancel */}
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onClose}>
             ✖ Cancel

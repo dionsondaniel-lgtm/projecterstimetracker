@@ -7,6 +7,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { FaBars, FaUserPlus, FaClock, FaPlus } from "react-icons/fa";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import TaskModal from "./TaskModal";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -34,6 +35,13 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
   const [otherTime, setOtherTime] = useState("");
   const [otherDate, setOtherDate] = useState("");
 
+  // ---- NEW: TaskModal states ----
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskDate, setTaskDate] = useState(dayjs().format("YYYY-MM-DD"));
+
+  // ---- NEW: Running hours per day ----
+  const [runningHours, setRunningHours] = useState([]);
+
   const timezoneCurrencyMap = {
     "Australia/Sydney": "AUD",
     "America/New_York": "USD",
@@ -57,6 +65,7 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
     fetchUsers();
     fetchAllLogs();
     updateClocks();
+    fetchExchangeRate(currency); // fetch immediately
     const clockInterval = setInterval(updateClocks, 1000);
     const exchangeInterval = setInterval(() => fetchExchangeRate(currency), 10 * 60 * 1000);
 
@@ -86,11 +95,32 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
 
-    if (!error) setAllLogs(data);
-    if (!showAllLogs) setLogs(data.filter((l) => l.date === today));
+    if (!error) {
+      setAllLogs(data);
+      if (!showAllLogs) setLogs(data.filter((l) => l.date === today));
+      calculateRunningHours(data);
+    }
   }
 
-  // ---------- EXCHANGE RATE FETCHER ----------
+  // ---------- CALCULATE RUNNING HOURS PER DAY ----------
+  const calculateRunningHours = (logData) => {
+    const month = dayjs().month();
+    const year = dayjs().year();
+    const filteredLogs = logData.filter((l) => dayjs(l.date).month() === month && dayjs(l.date).year() === year);
+
+    const hoursMap = {};
+    filteredLogs.forEach((l) => {
+      if (!hoursMap[l.date]) hoursMap[l.date] = 0;
+      hoursMap[l.date] += Number(l.hours_worked);
+    });
+
+    const sortedDates = Object.keys(hoursMap).sort((a, b) => dayjs(a).diff(dayjs(b)));
+
+    const running = sortedDates.map((date) => ({ date, hours: hoursMap[date] }));
+    setRunningHours(running);
+  };
+
+  // ---------- EXCHANGE RATE ----------
   const fetchExchangeRate = async (currencyCode) => {
     try {
       const res = await fetch(`https://open.er-api.com/v6/latest/${currencyCode}`);
@@ -110,11 +140,11 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
   // ----------------- CLOCKS -----------------
   function updateClocks() {
     const ph = dayjs().tz("Asia/Manila");
-    setPhTime(ph.format("HH:mm:ss"));
+    setPhTime(ph.format("hh:mm:ss A"));
     setPhDate(ph.format("YYYY-MM-DD"));
 
     const other = dayjs().tz(selectedTZ);
-    setOtherTime(other.format("HH:mm:ss"));
+    setOtherTime(other.format("hh:mm:ss A"));
     setOtherDate(other.format("YYYY-MM-DD"));
   }
 
@@ -160,28 +190,31 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
     else alert("Error deleting log");
   };
 
-  // ----------------- ADD TODAY'S TASK -----------------
-  const addTodaysTask = async () => {
+  // ----------------- ADD TASK USING MODAL -----------------
+  const addTodaysTask = () => {
     if (!currentUserId) return alert("Please select a user first");
 
-    const proceed = window.confirm("Do you want to add a new task for today?");
-    if (!proceed) return;
-
-    const task = prompt("Enter task description:");
-    const hours = prompt("Enter hours worked:");
-    if (!task || !hours) return alert("Invalid input");
-
-    const { error } = await supabase.from("logs").insert({
-      user_id: currentUserId,
-      date: today,
-      task_done: task,
-      hours_worked: Number(hours),
-    });
-
-    await fetchAllLogs();
-    if (!error) alert("Task added successfully");
-    else alert("Error adding task");
+    setTaskDate(today);
+    setTaskModalOpen(true);
   };
+
+  // ----------------- SAVE TASKS (modal callback) -----------------
+  async function handleTaskSave(entryList, pickedDate) {
+    const inserts = entryList.map((e) => ({
+      user_id: currentUserId,
+      date: pickedDate,
+      hours_worked: e.hours_worked,
+      task_done: e.task_done,
+    }));
+
+    const { error } = await supabase.from("logs").insert(inserts);
+
+    setTaskModalOpen(false);
+    fetchAllLogs();
+
+    if (error) alert("Error saving tasks");
+    else alert("Tasks saved successfully");
+  }
 
   // ----------------- REMEMBER USER -----------------
   useEffect(() => {
@@ -242,62 +275,116 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
         </label>
       </div>
 
-      {/* -------- LOGS TABLE -------- */}
-      <button
-        className="btn-info"
-        onClick={() => {
-          setShowAllLogs(!showAllLogs);
-          if (!showAllLogs) setLogs(allLogs);
-          else setLogs(allLogs.filter((l) => l.date === today));
-        }}
-      >
-        {showAllLogs ? "📋 Show Today's Logs" : "📋 Show All Logs"}
-      </button>
+      {/* -------- RUNNING HOURS CARD -------- */}
+      <div className="running-hours-card">
+        <h3>Running Hours This Month</h3>
+        {runningHours.length === 0 ? (
+          <p>No logs yet this month</p>
+        ) : (
+          <div className="hours-chart-container">
+            {(() => {
+              const maxHours = Math.max(...runningHours.map(r => r.hours)) || 1;
+              const maxBarHeight = 140;
+              return runningHours.map((item) => {
+                const height = (item.hours / maxHours) * maxBarHeight;
+                return (
+                  <div key={item.date} className="hours-bar-wrapper">
+                    <div
+                      className="hours-bar"
+                      style={{ height: `${height}px` }}
+                      title={`${dayjs(item.date).format("DD MMM")}: ${item.hours} hrs`}
+                    >
+                      <span className="hours-value">{item.hours}</span>
+                    </div>
+                    <span className="bar-label">{dayjs(item.date).format("DD MMM")}</span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        )}
+      </div>
 
-      <h2 className="tasks-title">{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
-      {logs.length === 0 ? (
-        <p>No tasks logged.</p>
-      ) : (
-        <table className="logs-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Date</th>
-              <th>Task</th>
-              <th>Hours</th>
-              <th>Actions</th>
+      {/* -------- SHOW ALL LOGS BUTTON -------- */}
+<button
+  className="btn-info"
+  onClick={() => {
+    setShowAllLogs(!showAllLogs);
+    if (!showAllLogs) setLogs(allLogs);
+    else setLogs(allLogs.filter((l) => l.date === today));
+  }}
+>
+  {showAllLogs ? "📋 Show Today's Logs" : "📋 Show All Logs"}
+</button>
+
+{/* -------- LOGS CARD (DARK UI) -------- */}
+<div className="logs-card">
+  {/* -------- LOGS SEARCH + COUNT -------- */}
+  <div className="logs-header">
+    <input
+      type="text"
+      placeholder="Search by user, date, or task..."
+      className="input-search"
+      onChange={(e) => {
+        const q = e.target.value.toLowerCase();
+        const filtered = allLogs.filter(
+          l =>
+            l.user_id?.name.toLowerCase().includes(q) ||
+            l.task_done.toLowerCase().includes(q) ||
+            l.date.includes(q)
+        );
+        setLogs(filtered);
+      }}
+    />
+    <span className="logs-count">{logs.length} {logs.length === 1 ? 'task' : 'tasks'} displayed</span>
+  </div>
+
+  <h2 className="tasks-title">{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
+
+  {logs.length === 0 ? (
+    <div className="no-logs">
+      <p>📭 No tasks logged {showAllLogs ? "yet." : "for today."}</p>
+    </div>
+  ) : (
+    <div className="logs-table-container">
+      <table className="logs-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Date</th>
+            <th>Task</th>
+            <th>Hours</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((l) => (
+            <tr key={l.id}>
+              <td>{l.user_id?.name}</td>
+              <td>{l.date}</td>
+              <td>{l.task_done}</td>
+              <td>{l.hours_worked}</td>
+              <td className="action-buttons">
+                <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>Edit</button>
+                <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>Del</button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {logs.map((l) => {
-              const payPHP = ratePHP ? Number(l.hours_worked) * ratePHP : 0;
-              return (
-                <tr key={l.id}>
-                  <td>{l.user_id?.name}</td>
-                  <td>{l.date}</td>
-                  <td>{l.task_done}</td>
-                  <td>{l.hours_worked}</td>
-                  <td>
-                    <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>Edit</button>
-                    <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>Del</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
 
-      {/* -------- UNIFIED CLOCK + EXCHANGE CARD -------- */}
-      <div className="unified-card">
+
+      {/* -------- UNIFIED CLOCK + EXCHANGE CARD (HORIZONTAL) -------- */}
+      <div className="unified-card horizontal">
         <div className="clock-container">
           <div className="clock-section">
             <h3>🇵🇭 Philippines</h3>
             <h1 className="clock-time">{phTime}</h1>
             <p className="clock-date">{phDate}</p>
           </div>
-
-          <hr className="clock-divider" />
 
           <div className="clock-section">
             <h3>🌍 Other Country</h3>
@@ -317,40 +404,35 @@ export default function AdminDashboard({ toRegister, toDashboard, onBack }) {
 
         <div className="rate-container">
           <h3>{currency} → PHP</h3>
-          {exchangeError ? (
-            <p style={{ color: "red" }}>{exchangeError}</p>
-          ) : ratePHP ? (
-            <h1>₱{ratePHP}</h1>
-          ) : (
-            <p>Loading...</p>
-          )}
-
-          <button className="futuristic-btn" onClick={() => fetchExchangeRate(currency)}>
-            Refresh Rate
-          </button>
-
+          {exchangeError ? <p style={{ color: "red" }}>{exchangeError}</p> : ratePHP ? <h1>₱{ratePHP}</h1> : <p>Loading...</p>}
+          <button className="futuristic-btn" onClick={() => fetchExchangeRate(currency)}>Refresh Rate</button>
           <div className="exchange-chart">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={
-                  ratePHP
-                    ? [
-                        { value: ratePHP - 0.2 },
-                        { value: ratePHP - 0.1 },
-                        { value: ratePHP - 0.05 },
-                        { value: ratePHP },
-                      ]
-                    : []
-                }
-              >
+              <LineChart data={ratePHP ? [
+                { value: ratePHP - 0.2 },
+                { value: ratePHP - 0.1 },
+                { value: ratePHP - 0.05 },
+                { value: ratePHP },
+              ] : []}>
                 <Line type="monotone" dataKey="value" stroke="#4e73df" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-
           <p className="small-text">Auto-updates every 10 minutes</p>
         </div>
       </div>
+
+      {/* ---------------- TASK MODAL ---------------- */}
+      <TaskModal
+        isOpen={taskModalOpen}
+        selectedDate={taskDate}
+        existingEntries={[]}
+        onSave={handleTaskSave}
+        onClose={() => setTaskModalOpen(false)}
+        userId={currentUserId}
+        fullName={users.find(u => u.id === currentUserId)?.name || "User"}
+        bottomButton={true} // optional prop to place save button at bottom
+      />
     </div>
   );
 }
