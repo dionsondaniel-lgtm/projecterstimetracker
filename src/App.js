@@ -3,11 +3,10 @@ import React, { useState } from "react";
 import AdminDashboard from "./components/AdminDashboard";
 import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
-import UserDashboard from "./components/UserDashboard"; // ✅ NEW
 import "./App.css";
 
 export default function App() {
-  const [view, setView] = useState("admin"); // admin, register, dashboard, userDashboard
+  const [view, setView] = useState("admin"); // admin, register, dashboard
 
   return (
     <>
@@ -15,7 +14,6 @@ export default function App() {
         <AdminDashboard
           toRegister={() => setView("register")}
           toDashboard={() => setView("dashboard")}
-          toUserDashboard={() => setView("userDashboard")} // ✅ Add handler
         />
       )}
 
@@ -25,10 +23,6 @@ export default function App() {
 
       {view === "dashboard" && (
         <Dashboard onBack={() => setView("admin")} />
-      )}
-
-      {view === "userDashboard" && (
-        <UserDashboard onBack={() => setView("admin")} /> // ✅ Add component
       )}
     </>
   );

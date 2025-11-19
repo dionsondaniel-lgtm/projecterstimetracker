@@ -1,3 +1,4 @@
+// src/components/TaskModal.js
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import "./Dashboard.css";
@@ -9,7 +10,7 @@ export default function TaskModal({
   onSave,
   existingEntries = [],
   selectedDate: initialDate,
-  maxHours = 7.5,
+  maxHours = 8,
   userId,
   fullName = "User", // 👈 New prop for greeting
 }) {
@@ -86,12 +87,6 @@ export default function TaskModal({
         <h3 style={{ marginTop: "0", marginBottom: "20px", color: "#555" }}>
           Add Task for Today ({formattedToday})
         </h3>
-
-        {/* DATE (fixed/disabled) */}
-        <div className="modal-input-group">
-          <label>Date</label>
-          <input type="date" value={selectedDate} disabled />
-        </div>
 
         {/* Remaining hours battery */}
         <div className="battery-container">

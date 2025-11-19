@@ -175,15 +175,50 @@
   text-align: center;
 }
 
+/* ---------------- SEARCH BOX + COUNTER ---------------- */
+.search-counter-container {
+  display: flex;
+  flex-direction: column;   /* stack search + counter */
+  gap: 8px;                 /* space between */
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.search-counter-container input.search-box {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #00ffa8;
+  background: #1f2833;
+  color: #f0f0f0;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 400px;
+  transition: all 0.2s ease;
+}
+
+.search-counter-container input.search-box:focus {
+  outline: none;
+  border-color: #00ffa8;
+  box-shadow: 0 0 5px #00ffa8;
+}
+
+.counter-text {
+  font-size: 0.9rem;
+  color: #aaa;
+  font-weight: 500;
+  text-align: left;
+}
+
+
 /* ---------------- LOGS CARD ---------------- */
 .logs-card {
-  background-color: #1e1e2f; /* dark card background */
-  border: 1px solid #444;    /* subtle border */
+  background-color: #1e1e2f; 
+  border: 1px solid #444;
   border-radius: 8px;
   padding: 1rem;
   margin-top: 1.5rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  color: #f0f0f0;           /* light text for contrast */
+  color: #f0f0f0;
 }
 
 .logs-card h2 {
@@ -254,8 +289,7 @@
   font-style: italic;
 }
 
-
-/* ---------------- CLOCK + EXCHANGE CARD ---------------- */
+/* ---------------- CLOCK + EXCHANGE CARD (FIXED HORIZONTAL & RESPONSIVE) ---------------- */
 .unified-card.horizontal {
   display: flex;
   gap: 20px;
@@ -264,14 +298,16 @@
   border-radius: 12px;
   padding: 15px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;       /* stay in one row */
+  overflow-x: auto;        /* allow horizontal scroll if screen too small */
 }
 
 .clock-container {
   display: flex;
   gap: 20px;
   flex: 2;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;       /* clocks in one row */
+  overflow-x: auto;
 }
 
 .clock-section {
@@ -279,7 +315,8 @@
   border: 1px solid #00ffa8;
   border-radius: 10px;
   padding: 10px 15px;
-  min-width: 180px;
+  min-width: 150px;
+  flex: 1;                 /* equal width for all clocks */
   text-align: center;
 }
 
@@ -295,12 +332,16 @@
 }
 
 .rate-container {
-  flex: 1;
+  flex: 1;                 /* same width as a clock card */
+  min-width: 200px;
   background: #0b0c10;
   border: 1px solid #00ffa8;
   border-radius: 10px;
   padding: 10px 15px;
-  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
 }
 
@@ -310,39 +351,58 @@
 }
 
 .exchange-chart {
-  width: 100%;
+  width: 100%;  
   height: 80px;
+  max-height: 100px;
   margin-top: 10px;
 }
 
-.small-text {
-  font-size: 0.7rem;
-  color: #f0f0f0;
-  margin-top: 5px;
-}
-
-
-/* ---------------- RESPONSIVE ---------------- */
-@media (max-width: 1000px) {
+/* ---------------- RESPONSIVE FIX ---------------- */
+@media (max-width: 1200px) {
   .unified-card.horizontal {
-    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
   }
 
-  .clock-container {
-    flex-direction: column;
+  .clock-section,
+  .rate-container {
+    flex: 1 1 0;           /* shrink proportionally */
+    min-width: 120px;      /* prevent too small */
   }
 
-  .hours-chart-container {
-    flex-wrap: wrap;
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.6rem;     /* scale down text */
+  }
+
+  .exchange-chart {
+    height: 60px;           /* scale chart */
   }
 }
 
-@media (max-width: 600px) {
-  .logs-header {
-    flex-direction: column;
-    align-items: flex-start;
+@media (max-width: 768px) {
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.4rem;
+  }
+
+  .exchange-chart {
+    height: 50px;
   }
 }
+
+@media (max-width: 500px) {
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.2rem;
+  }
+
+  .exchange-chart {
+    height: 40px;
+  }
+}
+
+
 
 /* ------------------- MODALS (DARK UI) ------------------- */
 .modal-overlay {
@@ -351,17 +411,18 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(10, 10, 15, 0.75); /* darker overlay */
+  background: rgba(10, 10, 15, 0.75);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* pushes top */
   justify-content: center;
   z-index: 999;
   backdrop-filter: blur(3px);
+  padding-top: 5vh; /* push modal near top */
 }
 
 .modal-box {
-  background: #1e1e2f; /* dark modal background */
-  color: #f0f0f0; /* light text */
+  background: #1e1e2f;
+  color: #f0f0f0;
   width: 500px;
   max-height: 85vh;
   overflow-y: auto;
@@ -372,92 +433,10 @@
   font-family: 'Roboto', sans-serif;
 }
 
-.modal-box h2 {
-  font-size: 1.6rem;
-  margin-bottom: 15px;
-  color: #00ffa8; /* neon accent */
-}
-
-.modal-input-group {
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-input-group label {
-  font-weight: 600;
-  margin-bottom: 5px;
-  color: #00ffa8;
-}
-
-.modal-input-group input,
-.modal-input-group textarea {
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 1rem;
-  background: #262636;
-  color: #f0f0f0;
-}
-
-.modal-input-group input:focus,
-.modal-input-group textarea:focus {
-  outline: none;
-  border-color: #00ffa8;
-  box-shadow: 0 0 5px #00ffa8;
-}
-
-.modal-input-group textarea {
-  min-height: 100px;
-  resize: vertical;
-}
-
-.modal-actions {
-  margin-top: 22px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.modal-actions .btn-info,
-.modal-actions .btn-secondary,
-.modal-actions .btn-danger {
-  font-size: 0.9rem;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid;
-  font-weight: bold;
-}
-
-.modal-actions .btn-info {
-  border-color: #00ffa8;
-  color: #00ffa8;
-}
-
-.modal-actions .btn-info:hover {
-  background: #00ffa8;
-  color: #0b0c10;
-  box-shadow: 0 0 8px #00ffa8;
-}
-
-.modal-actions .btn-secondary {
-  border-color: #4e73df;
-  color: #4e73df;
-}
-
-.modal-actions .btn-secondary:hover {
-  background: #4e73df;
-  color: #fff;
-}
-
-.modal-actions .btn-danger {
-  border-color: #ff4d6d;
-  color: #ff4d6d;
-}
-
-.modal-actions .btn-danger:hover {
-  background: #ff4d6d;
-  color: #fff;
+@media (max-width: 650px) {
+  .modal-box {
+    width: 90%;
+  }
 }
 
 /* ------------------- MODAL SUMMARY TABLE (DARK UI) ------------------- */
@@ -478,19 +457,19 @@
 }
 
 .modal-box .summary-table th {
-  background-color: #2c2c3e; /* dark header */
-  color: #00ffa8; /* neon accent */
+  background-color: #2c2c3e;
+  color: #00ffa8;
   text-align: left;
   font-weight: 600;
 }
 
 .modal-box .summary-table td {
-  background-color: #262636; /* dark row background */
-  color: #f0f0f0; /* light text */
+  background-color: #262636;
+  color: #f0f0f0;
 }
 
 .modal-box .summary-table tr:hover td {
-  background-color: #33334d; /* hover effect */
+  background-color: #33334d;
 }
 
 .modal-box .summary-table .action-buttons button {
@@ -527,9 +506,7 @@
   font-style: italic;
 }
 
-
 /* ------------------- BATTERY BAR ------------------- */
-
 .battery-container {
   margin: 15px 0 20px 0;
 }
@@ -554,13 +531,11 @@
 }
 
 /* ------------------- CALENDAR DATE PICKER MODAL ------------------- */
-
 .calendar-modal {
   padding: 20px;
 }
 
 /* ------------------- ANIMATIONS ------------------- */
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -572,23 +547,94 @@
   }
 }
 
-/* ------------------- RESPONSIVE ------------------- */
+/* Edit Task Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 15, 0.75);
+  display: flex;
+  align-items: flex-start; /* pushes top */
+  justify-content: center;
+  z-index: 999;
+  backdrop-filter: blur(3px);
+  padding-top: 5vh; /* push modal near top */
+}
 
-@media (max-width: 650px) {
-  .modal-box {
-    width: 90%;
-  }
+.modal-content {
+  background: #1f2833;
+  color: #f0f0f0;
+  padding: 24px;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 0 12px #00ffa8;
+}
 
-  .multi-select {
-    width: 100%;
-  }
+.modal-content h2 {
+  margin-bottom: 12px;
+}
 
-  .range-block {
-    flex-direction: column;
-    align-items: start;
-  }
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
 
-  .container {
-    padding: 15px;
-  }
+
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  padding: 18px 30px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  z-index: 2000;
+  animation: toast-pop 0.4s forwards, toast-fade 2.4s forwards;
+  text-align: center;
+}
+
+.toast.success { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+.toast.error { background: linear-gradient(135deg, #ff5858, #f09819); }
+
+@keyframes toast-pop {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@keyframes toast-fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Top-aligned modal */
+.modal-top {
+  position: fixed;
+  top: 80px; /* near top */
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  z-index: 1000;
+  animation: pop-in 0.3s ease-out;
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }

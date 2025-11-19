@@ -9,7 +9,7 @@ export default function SpecificTaskModal({
   onSave,
   existingEntries = [],
   selectedDate: initialDate,
-  maxHours = 7.5,
+  maxHours = 8,
   userId,
   fullName = "User" // Greeting name
 }) {

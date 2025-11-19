@@ -1,3 +1,4 @@
+// src/components/Dashboard.js
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import dayjs from "dayjs";
@@ -7,8 +8,9 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
 import TaskModal from "./TaskModal";
-import ExcelPromptModal from "./ExcelPromptModal";
 import SpecificTaskModal from "./SpecificTaskModal";
+import ExcelPromptModal from "./ExcelPromptModal";
+import EditTaskModal from "./EditTaskModal";
 
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
@@ -22,6 +24,8 @@ export default function Dashboard({ onBack }) {
 
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [calendarTaskOpen, setCalendarTaskOpen] = useState(false);
+  const [editTaskModalOpen, setEditTaskModalOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
   const [showAllLogs, setShowAllLogs] = useState(false);
 
   const [taskDate, setTaskDate] = useState(dayjs().format("YYYY-MM-DD"));
@@ -30,8 +34,11 @@ export default function Dashboard({ onBack }) {
   const [startDate, setStartDate] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [endDate, setEndDate] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
 
+  const [toast, setToast] = useState(null); // { message: "", type: "success"|"error" }
+
   const today = dayjs().format("YYYY-MM-DD");
 
+  // ------------------- FETCH DATA -------------------
   useEffect(() => {
     fetchUsers();
     fetchAllLogs();
@@ -66,34 +73,39 @@ export default function Dashboard({ onBack }) {
     const { data, error } = await supabase
       .from("logs")
       .select("*, user_id(name)")
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("date", { ascending: false });
 
     if (!error) setAllLogs(data);
   }
 
+  // ------------------- TOAST -------------------
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  };
+
   // ------------------- ADD TASK -------------------
   async function handleTaskSave(entryList, pickedDate) {
-  setLoading(true);
+    setLoading(true);
 
-  const inserts = entryList.map((e) => ({
-    user_id: selectedUserIds[0],
-    date: pickedDate,               // <<< Use selected date!!!
-    hours_worked: e.hours_worked,
-    task_done: e.task_done,
-  }));
+    const inserts = entryList.map((e) => ({
+      user_id: selectedUserIds[0],
+      date: pickedDate,
+      hours_worked: e.hours_worked,
+      task_done: e.task_done,
+    }));
 
-  const { error } = await supabase.from("logs").insert(inserts);
+    const { error } = await supabase.from("logs").insert(inserts);
 
-  setLoading(false);
-  setTaskModalOpen(false);
-  setCalendarTaskOpen(false);
-  fetchFilteredLogs();
-  fetchAllLogs();
+    setLoading(false);
+    setTaskModalOpen(false);
+    setCalendarTaskOpen(false);
+    fetchFilteredLogs();
+    fetchAllLogs();
 
-  if (error) alert("Error saving tasks");
-  else alert("Tasks saved successfully");
-}
+    if (error) showToast("Error saving tasks", "error");
+    else showToast("Tasks saved successfully", "success");
+  }
 
   // ----------------- DELETE LOG -----------------
   const deleteLog = async (logId) => {
@@ -103,150 +115,235 @@ export default function Dashboard({ onBack }) {
     const { error } = await supabase.from("logs").delete().eq("id", logId);
     await fetchFilteredLogs();
     await fetchAllLogs();
-    if (!error) alert("Deleted successfully");
-    else alert("Error deleting log");
+
+    if (!error) showToast("Deleted successfully", "success");
+    else showToast("Error deleting log", "error");
   };
 
-  // ------------------- UPDATE LOG -------------------
-  const updateLog = async (log) => {
-    const newTask = prompt("Task description:", log.task_done);
-    const newHours = prompt("Hours worked:", log.hours_worked);
 
-    if (!newTask || !newHours) return alert("Invalid input");
+// ------------------- EDIT LOG -------------------
 
+const openEditTaskModal = (log) => {
+  console.log("OPEN EDIT LOG:", log);
+
+  // Supabase returns: log.user_id = { name: "Alex", id: X }
+  const user =
+    typeof log.user_id === "object"
+      ? { id: log.user_id.id, name: log.user_id.name }
+      : users.find((u) => u.id === log.user_id) || { id: null, name: "User" };
+
+  console.log("FOUND USER:", user);
+
+  setEditingLog({ ...log, userObj: user });
+  setEditTaskModalOpen(true);
+};
+
+
+
+// Save edits
+const handleEditTaskSave = async (updatedEntry) => {
+  if (!editingLog) return;
+
+  try {
     const { error } = await supabase
       .from("logs")
       .update({
-        task_done: newTask,
-        hours_worked: Number(newHours),
+        task_done: updatedEntry.task_done,
+        hours_worked: Number(updatedEntry.hours_worked), // ensure number
       })
-      .eq("id", log.id);
+      .eq("id", editingLog.id);
 
-    fetchFilteredLogs();
-    fetchAllLogs();
-    if (!error) alert("Updated successfully");
-    else alert("Error updating log");
-  };
+    // Close modal
+    setEditTaskModalOpen(false);
+    setEditingLog(null);
+
+    // Refresh logs
+    await fetchFilteredLogs();
+    await fetchAllLogs();
+
+    if (!error) showToast("Task updated successfully", "success");
+    else showToast("Error updating task", "error");
+
+  } catch (err) {
+    console.error("Error updating task:", err);
+    showToast("Unexpected error updating task", "error");
+  }
+};
+
 
   // ------------------- EXCEL EXPORT -------------------
   const exportExcel = async (mode, config) => {
-    const { moneyFromAlex, hourlyRate, exchangeRate } = config;
+  const { moneyFromAlex, hourlyRate, exchangeRate, liveRateInfo } = config;
 
-    const exportLogs =
-      mode === "all"
-        ? allLogs
-        : allLogs.filter((l) =>
-            dayjs(l.date).isBetween(startDate, endDate, "day", "[]")
-          );
+  const exportLogs =
+    mode === "all"
+      ? allLogs
+      : allLogs.filter((l) =>
+          dayjs(l.date).isBetween(startDate, endDate, "day", "[]")
+        );
 
-    if (exportLogs.length === 0) {
-      alert("No logs to export.");
-      return;
-    }
+  if (exportLogs.length === 0) {
+    showToast("No logs to export", "error");
+    return;
+  }
 
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Work Logs");
+  const workbook = new ExcelJS.Workbook();
 
-    sheet.addRow(["Work Log Export"]);
-    sheet.addRow([]);
-    sheet.addRow(["Money From Alex (AUD)", moneyFromAlex]);
-    sheet.addRow(["Hourly Rate (AUD)", hourlyRate]);
-    sheet.addRow(["Exchange Rate (AUD→PHP)", exchangeRate]);
+  // ============================================
+  // SHEET 1: COMPANY SUMMARY
+  // ============================================
+  const totalsSheet = workbook.addWorksheet("Company Summary");
+  totalsSheet.columns = [
+    { width: 30 },
+    { width: 20 },
+  ];
 
-    let workDays = countWeekdays(startDate, endDate);
-    sheet.addRow(["Working Days (Mon–Fri)", workDays]);
+  totalsSheet.addRow(["COMPANY PAYROLL SUMMARY"]);
+  totalsSheet.addRow([]);
 
-    sheet.addRow([]);
-    sheet.addRow([
-      "User",
-      "Date",
-      "Task",
-      "Hours",
-      "Daily Total",
-      "Weekly Total",
-      "Pay AUD",
-      "Pay PHP",
-    ]);
-
-    const grouped = groupLogs(exportLogs);
-
-    grouped.forEach((entry) => {
-      entry.rows.forEach((r) => {
-        const payAUD = r.hours_worked * hourlyRate;
-        const payPHP = payAUD * exchangeRate;
-
-        sheet.addRow([
-          entry.user,
-          r.date,
-          r.task,
-          r.hours_worked,
-          entry.dailyTotals[r.date],
-          entry.weeklyTotals[r.week],
-          payAUD,
-          payPHP,
-        ]);
-      });
-    });
-
-    sheet.columns.forEach((col) => (col.width = 20));
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(
-      new Blob([buffer], { type: "application/vnd.ms-excel" }),
-      `logs_export_${dayjs().format("YYYY-MM-DD")}.xlsx`
-    );
-
-    setExcelPromptOpen(false);
+  // Will be filled after user sheet totals
+  let summaryTotals = {
+    hours: 0,
+    aud: 0,
+    php: 0
   };
 
-  function groupLogs(logs) {
-    const grouped = {};
+  totalsSheet.addRow(["Exchange Rate (AUD → PHP)", exchangeRate]);
+  totalsSheet.addRow([
+    "Exchange Rate Source",
+    liveRateInfo ? liveRateInfo.date : "Manual Entry"
+  ]);
+  totalsSheet.addRow([]);
 
-    logs.forEach((l) => {
-      const user = l.user_id?.name;
-      const week = dayjs(l.date).week();
+  // ============================================
+  // GROUP LOGS
+  // ============================================
+  const userGroups = {};
 
-      if (!grouped[user]) {
-        grouped[user] = {
-          user,
-          rows: [],
-          dailyTotals: {},
-          weeklyTotals: {},
-        };
-      }
+  exportLogs.forEach((l) => {
+    const user = l.user_id?.name || "Unknown";
 
-      grouped[user].rows.push({
-        date: l.date,
-        task: l.task_done,
-        hours_worked: Number(l.hours_worked),
-        week,
-      });
+    if (!userGroups[user]) userGroups[user] = [];
 
-      grouped[user].dailyTotals[l.date] =
-        (grouped[user].dailyTotals[l.date] || 0) + Number(l.hours_worked);
-      grouped[user].weeklyTotals[week] =
-        (grouped[user].weeklyTotals[week] || 0) + Number(l.hours_worked);
+    userGroups[user].push({
+      date: l.date,
+      task: l.task_done,
+      hours: Number(l.hours_worked),
+    });
+  });
+
+  const userTotals = {};
+
+  // ============================================
+  // SHEET 2: PAYROLL SUMMARY (USER OVERVIEW)
+  // ============================================
+  const summarySheet = workbook.addWorksheet("Payroll Summary");
+  summarySheet.addRow(["User", "Total Hours", "Pay (AUD)", "Pay (PHP)"]);
+  summarySheet.columns = [
+    { width: 25 },
+    { width: 14 },
+    { width: 15 },
+    { width: 15 },
+  ];
+
+  summarySheet.getRow(1).eachCell((c) => {
+    c.font = { bold: true };
+  });
+
+  // ============================================
+  // SHEETS 3+: USER DETAILED PAYROLL
+  // ============================================
+  for (const user in userGroups) {
+    const sheet = workbook.addWorksheet(`${user} Paysheet`);
+    sheet.addRow([`${user} Payroll Statement`]);
+    sheet.addRow([]);
+    sheet.addRow(["Date", "Task", "Hours", "AUD", "PHP"]);
+
+    sheet.getRow(3).eachCell((c) => (c.font = { bold: true }));
+
+    let totalHours = 0;
+    let totalAUD = 0;
+
+    userGroups[user].forEach((log) => {
+      const aud = log.hours * hourlyRate;
+      const php = aud * exchangeRate;
+
+      totalHours += log.hours;
+      totalAUD += aud;
+
+      sheet.addRow([log.date, log.task, log.hours, aud, php]);
     });
 
-    return Object.values(grouped);
+    const totalPHP = totalAUD * exchangeRate;
+
+    userTotals[user] = { hours: totalHours, aud: totalAUD, php: totalPHP };
+
+    summarySheet.addRow([user, totalHours, totalAUD, totalPHP]);
+
+    sheet.addRow([]);
+    sheet.addRow(["Total Hours", totalHours]);
+    sheet.addRow(["Total Pay (AUD)", totalAUD]);
+    sheet.addRow(["Total Pay (PHP)", totalPHP]);
   }
 
-  function countWeekdays(start, end) {
-    let day = dayjs(start);
-    const last = dayjs(end);
-    let count = 0;
+  // ============================================
+  // FILL MAIN COMPANY SUMMARY
+  // ============================================
+  summaryTotals.hours = Object.values(userTotals).reduce((a, b) => a + b.hours, 0);
+  summaryTotals.aud = Object.values(userTotals).reduce((a, b) => a + b.aud, 0);
+  summaryTotals.php = summaryTotals.aud * exchangeRate;
 
-    while (day.isBefore(last) || day.isSame(last)) {
-      const weekday = day.day();
-      if (weekday >= 1 && weekday <= 5) count++;
-      day = day.add(1, "day");
-    }
+  totalsSheet.addRow(["Total Hours (All Users)", summaryTotals.hours]);
+  totalsSheet.addRow(["Total Payroll (AUD)", summaryTotals.aud]);
+  totalsSheet.addRow(["Total Payroll (PHP)", summaryTotals.php]);
+  totalsSheet.addRow([]);
+  totalsSheet.addRow(["Money From Alex (AUD)", moneyFromAlex]);
+  totalsSheet.addRow(["Balance Remaining (AUD)", moneyFromAlex - summaryTotals.aud]);
+  totalsSheet.addRow([
+    "Balance Remaining (PHP)",
+    (moneyFromAlex - summaryTotals.aud) * exchangeRate
+  ]);
 
-    return count;
-  }
+  // ============================================
+  // SHEET 4: RAW LOGS
+  // ============================================
+  const rawSheet = workbook.addWorksheet("Raw Logs");
+  rawSheet.addRow(["User", "Date", "Task", "Hours", "Pay AUD", "Pay PHP"]);
 
-  // ------------------- TOTAL HOURS TODAY -------------------
-  const totalHoursToday = logs.reduce((sum, l) => sum + Number(l.hours_worked), 0);
+  exportLogs.forEach((l) => {
+    const hours = Number(l.hours_worked);
+    const payAUD = hours * hourlyRate;
+    const payPHP = payAUD * exchangeRate;
+
+    rawSheet.addRow([
+      l.user_id?.name || "Unknown",
+      l.date,
+      l.task_done,
+      hours,
+      payAUD,
+      payPHP,
+    ]);
+  });
+
+  // ============================================
+  // Save File
+  // ============================================
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  saveAs(
+    new Blob([buffer], { type: "application/vnd.ms-excel" }),
+    `Payroll_${dayjs().format("YYYY-MM-DD")}.xlsx`
+  );
+
+  setExcelPromptOpen(false);
+  showToast("Payroll exported successfully", "success");
+};
+
+
+const totalHoursToday = logs.reduce(
+  (sum, l) => sum + Number(l.hours_worked || 0),
+  0
+);
 
   // ------------------- RENDER -------------------
   return (
@@ -257,7 +354,6 @@ export default function Dashboard({ onBack }) {
         ← Back
       </button>
 
-      {/* MULTI-SELECT */}
       <div className="user-select-group">
         <label>Select User(s):</label>
         <select
@@ -276,7 +372,6 @@ export default function Dashboard({ onBack }) {
         </select>
       </div>
 
-      {/* ADD TASK TODAY */}
       <button
         className="btn-primary"
         disabled={selectedUserIds.length !== 1}
@@ -288,7 +383,6 @@ export default function Dashboard({ onBack }) {
         ➕ Add Today's Task (Total Hours: {totalHoursToday})
       </button>
 
-      {/* ADD TASK SPECIFIC DATE */}
       <button
         className="btn-secondary"
         disabled={selectedUserIds.length !== 1}
@@ -297,7 +391,6 @@ export default function Dashboard({ onBack }) {
         📅 Add Task for Specific Date
       </button>
 
-      {/* SHOW/HIDE ALL TASKS */}
       <button
         className="btn-info"
         onClick={() => {
@@ -309,8 +402,8 @@ export default function Dashboard({ onBack }) {
         {showAllLogs ? "📋 Show Selected User(s) Logs" : "📋 Show All Logs"}
       </button>
 
-      {/* LOGS TABLE */}
       <h2>{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
+
       {logs.length === 0 ? (
         <p>No tasks logged.</p>
       ) : (
@@ -332,7 +425,10 @@ export default function Dashboard({ onBack }) {
                 <td>{l.task_done}</td>
                 <td>{l.hours_worked}</td>
                 <td>
-                  <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>
+                  <button
+                    className="btn-sm btn-secondary"
+                    onClick={() => openEditTaskModal(l)}
+                  >
                     Edit
                   </button>
                   <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>
@@ -345,7 +441,6 @@ export default function Dashboard({ onBack }) {
         </table>
       )}
 
-      {/* EXPORT */}
       <div className="export-section">
         <button className="btn-primary" onClick={() => setExcelPromptOpen(true)}>
           📊 Export All Logs
@@ -369,7 +464,7 @@ export default function Dashboard({ onBack }) {
         onSave={handleTaskSave}
         onClose={() => setTaskModalOpen(false)}
         userId={selectedUserIds[0]}
-        fullName={users.find(u => u.id === selectedUserIds[0])?.name || "User"}
+        fullName={users.find((u) => u.id === selectedUserIds[0])?.name || "User"}
       />
       <SpecificTaskModal
         isOpen={calendarTaskOpen}
@@ -378,16 +473,28 @@ export default function Dashboard({ onBack }) {
         onSave={handleTaskSave}
         onClose={() => setCalendarTaskOpen(false)}
         userId={selectedUserIds[0]}
-        fullName={users.find(u => u.id === selectedUserIds[0])?.name || "User"}
+        fullName={users.find((u) => u.id === selectedUserIds[0])?.name || "User"}
       />
 
-      <ExcelPromptModal
-        isOpen={excelPromptOpen !== false}
-        onCancel={() => setExcelPromptOpen(false)}
-        onConfirm={(conf) =>
-          exportExcel(excelPromptOpen === true ? "all" : "range", conf)
-        }
-      />
+<EditTaskModal
+  isOpen={editTaskModalOpen}
+  task={editingLog}          // <-- must contain userObj now
+  users={users}              // <-- needed for matching fallback
+  onClose={() => setEditTaskModalOpen(false)}
+  onSave={handleEditTaskSave}
+/>
+
+<ExcelPromptModal
+  isOpen={excelPromptOpen !== false}
+  onCancel={() => setExcelPromptOpen(false)}
+  onConfirm={(conf) => {
+    exportExcel(excelPromptOpen, conf);  // pass correct mode
+  }}
+/>
+
+
+      {/* TOAST */}
+      {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
     </div>
   );
 }
