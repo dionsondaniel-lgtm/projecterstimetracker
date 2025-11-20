@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import "./Register.css";
 
 const DEFAULT_AVATAR_URL = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
@@ -7,6 +8,7 @@ export default function Register({ onBack }) {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ name: "", email: "" });
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null); // toast message { type: 'success'|'error', message: '' }
 
   useEffect(() => {
     fetchUsers();
@@ -17,14 +19,21 @@ export default function Register({ onBack }) {
       .from("users")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) console.error("fetchUsers error:", error);
-    else setUsers(data);
+    if (error) {
+      showToast("error", "Failed to fetch users");
+      console.error("fetchUsers error:", error);
+    } else setUsers(data);
+  };
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 2500); // auto hide
   };
 
   const handleRegister = async () => {
     const { name, email } = newUser;
     if (!name || !email) {
-      alert("Please fill in all fields.");
+      showToast("error", "Please fill in all fields");
       return;
     }
 
@@ -36,10 +45,11 @@ export default function Register({ onBack }) {
 
     if (error) {
       console.error("Insert Error:", error);
-      alert("User registration failed.");
+      showToast("error", "User registration failed");
     } else {
       setNewUser({ name: "", email: "" });
       fetchUsers();
+      showToast("success", "User registered successfully");
     }
 
     setLoading(false);
@@ -51,20 +61,23 @@ export default function Register({ onBack }) {
 
     const password = prompt("Enter admin password to confirm delete:");
     if (password !== "1234") {
-      alert("Incorrect password. Delete canceled.");
+      showToast("error", "Incorrect password. Delete canceled");
       return;
     }
 
     const { error } = await supabase.from("users").delete().eq("id", id);
     if (error) {
-      alert("Delete failed.");
+      showToast("error", "Delete failed");
     } else {
       fetchUsers();
+      showToast("success", "User deleted successfully");
     }
   };
 
   return (
     <div className="register-container">
+      {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+
       <h2 className="register-title">Register a New User</h2>
 
       <div className="input-row">

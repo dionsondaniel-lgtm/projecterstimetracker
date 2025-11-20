@@ -122,13 +122,20 @@ export default function EditTaskModal({
           </div>
         </div>
 
-        <label>Task Description:</label>
-        <textarea
-          value={taskDesc}
-          onChange={(e) => setTaskDesc(e.target.value)}
-          rows={5}
-          style={{ width: "100%", fontSize: "1rem", padding: "8px", marginBottom: "12px" }}
-        />
+<label>Task Description:</label>
+<textarea
+  value={taskDesc}
+  onChange={(e) => setTaskDesc(e.target.value)}
+  rows={5}
+  style={{
+    width: "100%",
+    fontSize: "1rem",
+    padding: "8px",
+    marginBottom: "12px",
+    resize: "vertical" // allow only vertical resizing
+  }}
+/>
+
 
         <label>Hours Worked:</label>
         <input

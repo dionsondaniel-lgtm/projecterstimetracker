@@ -272,29 +272,45 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
         </label>
       </div>
 
-      {/* RUNNING HOURS */}
       <div className="running-hours-card">
-        <h3>Running Hours This Month</h3>
-        {runningHours.length === 0 ? <p>No logs yet this month</p> : (
-          <div className="hours-chart-container">
-            {(() => {
-              const maxHours = Math.max(...runningHours.map(r => r.hours)) || 1;
-              const maxBarHeight = 140;
-              return runningHours.map(item => {
-                const height = (item.hours / maxHours) * maxBarHeight;
+  <h3>Running Hours This Month</h3>
+
+  {runningHours.length === 0 ? (
+    <p>No logs yet this month</p>
+  ) : (
+    <div className="running-hours-scroll">
+      {(() => {
+        const rows = [];
+        const chunkSize = 10; // 10 days per row
+        for (let i = 0; i < runningHours.length; i += chunkSize) {
+          const rowItems = runningHours.slice(i, i + chunkSize);
+          rows.push(
+            <div key={i} className="hours-row">
+              {rowItems.map(item => {
+                const maxHours = Math.max(...runningHours.map(r => r.hours)) || 1;
+                const height = (item.hours / maxHours) * 140;
+
                 return (
                   <div key={item.date} className="hours-bar-wrapper">
-                    <div className="hours-bar" style={{ height: `${height}px` }} title={`${dayjs(item.date).format("DD MMM")}: ${item.hours} hrs`}>
+                    <div
+                      className="hours-bar"
+                      style={{ height: `${height}px` }}
+                      title={`${dayjs(item.date).format("DD MMM")}: ${item.hours} hrs`}
+                    >
                       <span className="hours-value">{item.hours}</span>
                     </div>
                     <span className="bar-label">{dayjs(item.date).format("DD MMM")}</span>
                   </div>
                 );
-              });
-            })()}
-          </div>
-        )}
-      </div>
+              })}
+            </div>
+          );
+        }
+        return rows;
+      })()}
+    </div>
+  )}
+</div>
 
       {/* SHOW ALL LOGS BUTTON */}
       <button className="btn-info" onClick={() => {
