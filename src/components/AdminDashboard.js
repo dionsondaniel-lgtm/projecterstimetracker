@@ -47,7 +47,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
   const [editTask, setEditTask] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  // Toast messages
   const [toast, setToast] = useState({ message: "", type: "", visible: false });
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type, visible: true });
@@ -122,13 +121,20 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
     const hoursMap = {};
     filteredLogs.forEach(l => { hoursMap[l.date] = (hoursMap[l.date] || 0) + Number(l.hours_worked); });
 
-    // Fill missing days
     const daysInMonth = dayjs().daysInMonth();
-    const running = Array.from({ length: daysInMonth }, (_, i) => {
-      const date = dayjs().date(i + 1).format("YYYY-MM-DD");
-      return { date, hours: hoursMap[date] || 0 };
-    });
+    const running = [];
+    const maxHours = Math.max(...Object.values(hoursMap), 1); // prevent divide by zero
 
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = dayjs().date(i).format("YYYY-MM-DD");
+      const hours = hoursMap[date] || 0;
+      running.push({
+        date,
+        hours,
+        day: dayjs(date).format("ddd"),
+        percent: Math.round((hours / maxHours) * 100)
+      });
+    }
     setRunningHours(running);
   };
 
@@ -162,12 +168,11 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
 
   const handleTimezoneChange = (tz) => {
     setSelectedTZ(tz);
-    const curr = timezoneCurrencyMap[tz] || "AUD";
-    setCurrency(curr);
-    fetchExchangeRate(curr);
+    const newCurrency = timezoneCurrencyMap[tz] || "AUD";
+    setCurrency(newCurrency);
+    fetchExchangeRate(newCurrency);
   };
 
-  // ----------------- UPDATE LOG -----------------
   const updateLog = (log) => {
     const user = users.find(u => u.id === log.user_id) || { id: null, name: "User" };
     setEditTask({ ...log, userObj: user });
@@ -175,39 +180,19 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ----------------- HANDLE EDIT SAVE -----------------
-  const handleEditSave = async (updatedTask) => {
-    try {
-      const { error } = await supabase
-        .from("logs")
-        .update({ task_done: updatedTask.task_done, hours_worked: Number(updatedTask.hours_worked) })
-        .eq("id", updatedTask.id);
-
-      await fetchAllLogs();
-      if (!error) showToast("Updated successfully", "success");
-      else showToast("Error updating task", "error");
-    } catch {
-      showToast("Unexpected error updating task", "error");
-    }
-  };
-
-  // ----------------- DELETE LOG -----------------
   const deleteLog = async (logId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
-    const { error } = await supabase.from("logs").delete().eq("id", logId);
-    await fetchAllLogs();
-    if (!error) showToast("Deleted successfully", "success");
-    else showToast("Error deleting log", "error");
+    if (!window.confirm("Delete this task?")) return;
+    await supabase.from("logs").delete().eq("id", logId);
+    fetchAllLogs();
+    showToast("Deleted", "success");
   };
 
-  // ----------------- ADD TASK -----------------
   const addTodaysTask = () => {
-    if (!currentUserId) return showToast("Please select a user first", "error");
+    if (!currentUserId) return showToast("Select user first", "error");
     setTaskDate(today);
     setTaskModalOpen(true);
   };
 
-  // ----------------- SAVE TASKS -----------------
   const handleTaskSave = async (entryList, pickedDate) => {
     const inserts = entryList.map(e => ({
       user_id: currentUserId,
@@ -215,21 +200,18 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
       hours_worked: e.hours_worked,
       task_done: e.task_done,
     }));
-
-    const { error } = await supabase.from("logs").insert(inserts);
+    await supabase.from("logs").insert(inserts);
     setTaskModalOpen(false);
     fetchAllLogs();
-    if (!error) showToast("Tasks saved successfully", "success");
-    else showToast("Error saving tasks", "error");
+    showToast("Tasks saved");
   };
 
-  // ----------------- REMEMBER USER -----------------
+  // Remember user
   useEffect(() => {
     if (rememberUser && currentUserId) localStorage.setItem("rememberUserId", currentUserId);
     else localStorage.removeItem("rememberUserId");
   }, [rememberUser, currentUserId]);
 
-  // ----------------- SEARCH -----------------
   const handleSearch = (query) => {
     const q = query.toLowerCase();
     setLogs(allLogs.filter(l =>
@@ -239,7 +221,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
     ));
   };
 
-  // ----------------- RENDER -----------------
   return (
     <div className="admin-container">
       <h1 className="admin-title">Projecters Time Tracking System</h1>
@@ -247,17 +228,17 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
       {/* DROPDOWN */}
       <div className="dropdown-container" ref={dropdownRef}>
         <button className="futuristic-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
-          <FaBars className="icon-left" /> Actions
+          <FaBars /> Actions
         </button>
         {dropdownOpen && (
           <ul className="dropdown-menu">
-            <li onClick={() => { toRegister(); setDropdownOpen(false); }}><FaUserPlus className="icon-left" /> Register New User</li>
-            <li onClick={() => { toDashboard(); setDropdownOpen(false); }}><FaClock className="icon-left" /> Manage Time Logs</li>
+            <li onClick={() => { toRegister(); setDropdownOpen(false); }}><FaUserPlus /> Register New User</li>
+            <li onClick={() => { toDashboard(); setDropdownOpen(false); }}><FaClock /> Manage Time Logs</li>
           </ul>
         )}
       </div>
 
-      {/* USER SELECTION + ADD TASK */}
+      {/* USER SELECTION */}
       <div className="user-selection">
         <label>Select User:</label>
         <select value={currentUserId} onChange={(e) => setCurrentUserId(e.target.value)} className="input-select">
@@ -265,71 +246,54 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
           {users.map(u => (<option key={u.id} value={u.id}>{u.name}</option>))}
         </select>
 
-        <button className="futuristic-btn" onClick={addTodaysTask}><FaPlus /> Add Today's Task</button>
+        <button className="futuristic-btn" onClick={addTodaysTask}>
+          <FaPlus /> Add Today's Task
+        </button>
 
         <label className="remember-user">
           <input type="checkbox" checked={rememberUser} onChange={() => setRememberUser(!rememberUser)} /> Remember my user
         </label>
       </div>
 
+      {/* RUNNING HOURS */}
       <div className="running-hours-card">
-  <h3>Running Hours This Month</h3>
-
-  {runningHours.length === 0 ? (
-    <p>No logs yet this month</p>
-  ) : (
-    <div className="running-hours-scroll">
-      {(() => {
-        const rows = [];
-        const chunkSize = 10; // 10 days per row
-        for (let i = 0; i < runningHours.length; i += chunkSize) {
-          const rowItems = runningHours.slice(i, i + chunkSize);
-          rows.push(
-            <div key={i} className="hours-row">
-              {rowItems.map(item => {
-                const maxHours = Math.max(...runningHours.map(r => r.hours)) || 1;
-                const height = (item.hours / maxHours) * 140;
-
-                return (
-                  <div key={item.date} className="hours-bar-wrapper">
-                    <div
-                      className="hours-bar"
-                      style={{ height: `${height}px` }}
-                      title={`${dayjs(item.date).format("DD MMM")}: ${item.hours} hrs`}
-                    >
-                      <span className="hours-value">{item.hours}</span>
-                    </div>
-                    <span className="bar-label">{dayjs(item.date).format("DD MMM")}</span>
-                  </div>
-                );
-              })}
+        <h2 className="tasks-title">Running Hours This Month</h2>
+        <div className="running-hours-grid">
+          {runningHours.map((item, index) => (
+            <div className="hours-card" key={index}>
+              <div className="hours-day">{item.day}</div>
+              <div className="hours-date">{item.date}</div>
+              <div className="hours-total">{item.hours}h</div>
+              <div className="hours-progress-bar-bg">
+                <div className="hours-progress-bar-fill" style={{ width: `${item.percent}%` }}></div>
+              </div>
             </div>
-          );
-        }
-        return rows;
-      })()}
-    </div>
-  )}
-</div>
+          ))}
+        </div>
+      </div>
 
-      {/* SHOW ALL LOGS BUTTON */}
+      {/* SHOW ALL LOGS */}
       <button className="btn-info" onClick={() => {
         setShowAllLogs(prev => !prev);
-        setLogs(prev => !showAllLogs ? allLogs : allLogs.filter(l => l.date === today));
-      }}>{showAllLogs ? "📋 Show Today's Logs" : "📋 Show All Logs"}</button>
+        setLogs(!showAllLogs ? allLogs : allLogs.filter(l => l.date === today));
+      }}>
+        {showAllLogs ? "📋 Show Today's Logs" : "📋 Show All Logs"}
+      </button>
 
       {/* LOGS TABLE */}
       <div className="logs-card">
         <div className="logs-header">
           <div className="search-counter-container">
             <input type="text" placeholder="Search by user, date, or task..." className="input-search" onChange={(e) => handleSearch(e.target.value)} />
-            <span className="logs-count">{logs.length} {logs.length === 1 ? "task" : "tasks"} displayed</span>
+            <span className="logs-count">{logs.length} tasks displayed</span>
           </div>
         </div>
 
         <h2 className="tasks-title">{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
 
-        {logs.length === 0 ? <div className="no-logs"><p>📭 No tasks logged {showAllLogs ? "yet." : "for today."}</p></div> :
+        {logs.length === 0 ? (
+          <div className="no-logs"><p>📭 No tasks logged</p></div>
+        ) : (
           <div className="logs-table-container">
             <table className="logs-table">
               <thead>
@@ -353,10 +317,10 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
               </tbody>
             </table>
           </div>
-        }
+        )}
       </div>
 
-      {/* CLOCK + EXCHANGE RATE */}
+      {/* CLOCK + EXCHANGE */}
       <div className="unified-card horizontal">
         <div className="clock-container">
           <div className="clock-section">
@@ -364,6 +328,7 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
             <h1 className="clock-time">{phTime}</h1>
             <p className="clock-date">{phDate}</p>
           </div>
+
           <div className="clock-section">
             <h3>🌍 Other Country</h3>
             <select className="input-select small" value={selectedTZ} onChange={(e) => handleTimezoneChange(e.target.value)}>
@@ -376,20 +341,29 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
 
         <div className="rate-container">
           <h3>{currency} → PHP</h3>
-          {exchangeError ? <p style={{ color: "red" }}>{exchangeError}</p> : ratePHP ? <h1>₱{ratePHP}</h1> : <p>Loading...</p>}
+          {exchangeError ? (
+            <p style={{ color: "red" }}>{exchangeError}</p>
+          ) : ratePHP ? (
+            <h1>₱{ratePHP}</h1>
+          ) : (
+            <p>Loading...</p>
+          )}
+
           <button className="futuristic-btn" onClick={() => fetchExchangeRate(currency)}>Refresh Rate</button>
+
           <div className="exchange-chart">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={100}>
               <LineChart data={ratePHP ? [
                 { value: ratePHP - 0.2 },
                 { value: ratePHP - 0.1 },
                 { value: ratePHP - 0.05 },
-                { value: ratePHP },
+                { value: ratePHP }
               ] : []}>
                 <Line type="monotone" dataKey="value" stroke="#4e73df" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
+
           <p className="small-text">Auto-updates every 10 minutes</p>
         </div>
       </div>
@@ -411,12 +385,22 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
         isOpen={editModalOpen}
         task={editTask}
         onClose={() => setEditModalOpen(false)}
-        onSave={handleEditSave}
+        onSave={async (update) => {
+          await supabase
+            .from("logs")
+            .update({ task_done: update.task_done, hours_worked: Number(update.hours_worked) })
+            .eq("id", update.id);
+
+          fetchAllLogs();
+          showToast("Updated!", "success");
+        }}
         showToast={showToast}
       />
 
       {/* TOAST */}
-      {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+      {toast.visible && (
+        <div className={`toast ${toast.type}`}>{toast.message}</div>
+      )}
     </div>
   );
 }

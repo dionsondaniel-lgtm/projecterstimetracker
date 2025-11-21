@@ -144,100 +144,87 @@ body, html {
   gap: 6px;
 }
 
-/* ---------------- RUNNING HOURS CARD ---------------- */
+/* -------- NEW RESPONSIVE RUNNING HOURS (CARD GRID STYLE + DAY OF WEEK) -------- */
+
 .running-hours-card {
   background: linear-gradient(145deg, #0d1117, #1a1c26);
   border: 1px solid #9d00ff;
   border-radius: 16px;
-  padding: 30px 25px;
+  padding: 20px;
   width: 100%;
   box-shadow: 0 0 25px rgba(157,0,255,0.25);
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  transition: transform 0.2s ease;
+  gap: 20px;
 }
 
-.running-hours-card:hover {
-  transform: translateY(-4px);
-}
-
-/* Scroll container */
-.running-hours-scroll {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 12px;
-}
-
-/* Row container inside card */
-.hours-row {
-  display: flex;
-  align-items: flex-end;
+/* Grid auto-adjusts for all screen sizes */
+.running-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 18px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  margin-bottom: 18px;
-  flex-wrap: nowrap;
-}
-
-.hours-row:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-/* Bars inside each row */
-.hours-bar-wrapper {
-  flex: 1 1 0;
-  min-width: 42px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.hours-bar {
   width: 100%;
-  max-height: 160px;
-  background: linear-gradient(135deg, #9d00ff, #6a11cb, #2575fc);
-  border-radius: 10px 10px 0 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  position: relative;
-  transition: all 0.4s ease;
-  box-shadow: 0 0 10px #9d00ff, 0 0 18px #6a11cb;
 }
 
-.hours-value {
-  position: absolute;
-  top: -24px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  color: #f0f0f0;
-  text-shadow: 0 0 6px #9d00ff, 0 0 4px #6a11cb;
-  white-space: nowrap;
-}
-
-.bar-label {
-  font-size: 0.7rem;
-  margin-top: 10px;
+/* Each day card */
+.hours-card {
+  background: linear-gradient(135deg, #1b1d26, #24273c);
+  border: 1px solid #8e2de2;
+  border-radius: 14px;
+  padding: 16px;
   text-align: center;
-  color: #d0d0d0;
-  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(142, 45, 226, 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* Scrollbar styling */
-.running-hours-scroll::-webkit-scrollbar {
-  height: 6px;
+.hours-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 18px rgba(142, 45, 226, 0.35);
 }
-.running-hours-scroll::-webkit-scrollbar-thumb {
-  background: #9d00ff;
-  border-radius: 10px;
+
+/* Day of week */
+.hours-day {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 4px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
-.running-hours-scroll::-webkit-scrollbar-track {
-  background: #0d1117;
+
+/* Date */
+.hours-date {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: #9d00ff;
+  text-shadow: 0 0 6px #9d00ff;
 }
+
+/* Total hours big text */
+.hours-total {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+/* Progress bar */
+.hours-progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: #333;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hours-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #9d00ff, #6a11cb, #2575fc);
+  width: 0%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
 
 /* ---------------- SEARCH BOX + COUNTER ---------------- */
 .search-counter-container {
@@ -337,61 +324,134 @@ body, html {
 }
 .btn-danger:hover { background-color: #c0392b; box-shadow: 0 0 6px #ff4d6d; }
 
-/* ---------------- CLOCK + EXCHANGE CARD ---------------- */
+/* ---------------- CLOCK + EXCHANGE CARD (Fully Responsive) ---------------- */
 .unified-card.horizontal {
   display: flex;
   gap: 20px;
   background: linear-gradient(145deg, #1f2833, #0b0c10);
   border: 1px solid #8e2de2;
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 20px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;           /* ← Allows stacking on small screens */
+  justify-content: center;
+  align-items: stretch;
 }
 
+/* Clock wrapper */
 .clock-container {
   display: flex;
-  gap: 20px;
   flex: 2;
-  overflow-x: auto;
+  gap: 20px;
+  flex-wrap: wrap;          /* ← Stacks neatly on mobile */
+  min-width: 260px;
+  justify-content: center;
 }
 
-.clock-section, .rate-container {
+/* Individual card */
+.clock-section,
+.rate-container {
   background: linear-gradient(135deg, #0b0c10, #1f2833);
   border: 1px solid #8e2de2;
-  border-radius: 12px;
-  padding: 15px 20px;
+  border-radius: 14px;
+  padding: 18px 20px;
   text-align: center;
-  flex: 1 1 0;
-  min-width: 150px;
-  box-shadow: 0 0 15px rgba(157,0,255,0.25);
+  flex: 1 1 250px;         /* ← Min 250px, expands on desktop */
+  max-width: 400px;        /* ← Prevents cards from becoming too wide */
+  box-shadow: 0 0 15px rgba(157, 0, 255, 0.25);
+  transition: transform 0.2s ease;
 }
 
-.clock-time, .rate-container h1 {
+.clock-section:hover,
+.rate-container:hover {
+  transform: translateY(-5px);
+}
+
+/* Clock + rate text */
+.clock-time,
+.rate-container h1 {
   font-size: 2rem;
-  margin: 10px 0;
-  color: #9d00ff;
-  text-shadow: 0 0 8px #9d00ff;
+  margin: 8px 0;
+  color: #b14bff;
+  text-shadow: 0 0 10px rgba(177, 75, 255, 0.8);
 }
 
 .clock-date {
-  font-size: 0.9rem;
-  color: #ccc;
+  font-size: 1rem;
+  color: #cccccc;
+  opacity: 0.9;
 }
 
-/* ---------------- RESPONSIVE FIX ---------------- */
+.rate-container {
+  background: linear-gradient(135deg, #0b0c10, #1f2833);
+  border: 1px solid #8e2de2;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  flex: 1 1 250px;
+  max-width: 420px;
+  box-shadow: 0 0 15px rgba(157, 0, 255, 0.25);
+}
+
+.rate-container h1 {
+  color: #b14bff;
+  font-size: 2rem;
+  margin: 12px 0;
+  text-shadow: 0 0 10px #b14bff;
+}
+
+/* ---------------- MEDIA QUERIES ---------------- */
+
+/* --- Large Tablets / Small Laptops --- */
 @media (max-width: 1200px) {
-  .clock-section, .rate-container { min-width: 120px; }
-  .clock-time, .rate-container h1 { font-size: 1.6rem; }
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.7rem;
+  }
+  .clock-section,
+  .rate-container {
+    flex: 1 1 220px;
+  }
 }
 
-@media (max-width: 768px) {
-  .clock-time, .rate-container h1 { font-size: 1.4rem; }
+/* --- Tablets --- */
+@media (max-width: 900px) {
+  .unified-card.horizontal {
+    padding: 16px;
+  }
+  .clock-container {
+    gap: 15px;
+  }
+  .clock-section,
+  .rate-container {
+    padding: 15px;
+    flex: 1 1 200px;
+  }
 }
 
-@media (max-width: 500px) {
-  .clock-time, .rate-container h1 { font-size: 1.2rem; }
+/* --- Mobile --- */
+@media (max-width: 600px) {
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.4rem;
+  }
+  .clock-section,
+  .rate-container {
+    flex: 1 1 100%;
+    max-width: 100%;       /* Full width mobile */
+  }
 }
+
+/* --- Small Mobile (iPhone SE / 320px) --- */
+@media (max-width: 400px) {
+  .clock-time,
+  .rate-container h1 {
+    font-size: 1.2rem;
+  }
+  .unified-card.horizontal {
+    gap: 12px;
+  }
+}
+
 
 /* ---------------- MODALS ---------------- */
 .modal-overlay {

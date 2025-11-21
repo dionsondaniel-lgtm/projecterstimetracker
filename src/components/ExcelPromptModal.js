@@ -3,7 +3,7 @@ import "./Dashboard.css";
 
 export default function ExcelPromptModal({ isOpen, onCancel, onConfirm }) {
   const [moneyFromAlex, setMoneyFromAlex] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("32"); // default
+  const [hourlyRate, setHourlyRate] = useState("13"); // default
   const [exchangeRate, setExchangeRate] = useState("");
 
   if (!isOpen) return null;

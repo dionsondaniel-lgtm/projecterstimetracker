@@ -254,7 +254,7 @@ const handleEditTaskSave = async (updatedEntry) => {
   // SHEETS 3+: USER DETAILED PAYROLL
   // ============================================
   for (const user in userGroups) {
-    const sheet = workbook.addWorksheet(`${user} Paysheet`);
+    const sheet = workbook.addWorksheet(`${user}`);
     sheet.addRow([`${user} Payroll Statement`]);
     sheet.addRow([]);
     sheet.addRow(["Date", "Task", "Hours", "AUD", "PHP"]);
@@ -402,44 +402,38 @@ const totalHoursToday = logs.reduce(
         {showAllLogs ? "📋 Show Selected User(s) Logs" : "📋 Show All Logs"}
       </button>
 
-      <h2>{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
 
-      {logs.length === 0 ? (
-        <p>No tasks logged.</p>
-      ) : (
-        <table className="logs-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Date</th>
-              <th>Task</th>
-              <th>Hours</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((l) => (
-              <tr key={l.id}>
-                <td>{l.user_id?.name}</td>
-                <td>{l.date}</td>
-                <td>{l.task_done}</td>
-                <td>{l.hours_worked}</td>
-                <td>
-                  <button
-                    className="btn-sm btn-secondary"
-                    onClick={() => openEditTaskModal(l)}
-                  >
-                    Edit
-                  </button>
-                  <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>
-                    Del
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {/* LOGS TABLE */}
+      <div className="logs-card">
+        <h2 className="tasks-title">{showAllLogs ? "All Tasks" : `Today: ${today}`}</h2>
+        <span className="logs-count">{logs.length} tasks displayed</span>
+
+        {logs.length === 0 ? <div className="no-logs"><p>📭 No tasks logged {showAllLogs ? "yet." : "for today."}</p></div> :
+          <div className="logs-table-container">
+            <table className="logs-table">
+              <thead>
+                <tr>
+                  <th>User</th><th>Date</th><th>Task</th><th>Hours</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map(l => (
+                  <tr key={l.id}>
+                    <td>{l.user?.name}</td>
+                    <td>{l.date}</td>
+                    <td>{l.task_done}</td>
+                    <td>{l.hours_worked}</td>
+                    <td className="action-buttons">
+                      <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>Edit</button>
+                      <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>Del</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
 
       <div className="export-section">
         <button className="btn-primary" onClick={() => setExcelPromptOpen(true)}>
