@@ -417,19 +417,29 @@ const totalHoursToday = logs.reduce(
                 </tr>
               </thead>
               <tbody>
-                {logs.map(l => (
-                  <tr key={l.id}>
-                    <td>{l.user?.name}</td>
-                    <td>{l.date}</td>
-                    <td>{l.task_done}</td>
-                    <td>{l.hours_worked}</td>
-                    <td className="action-buttons">
-                      <button className="btn-sm btn-secondary" onClick={() => updateLog(l)}>Edit</button>
-                      <button className="btn-sm btn-danger" onClick={() => deleteLog(l.id)}>Del</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+  {logs.map((l) => (
+    <tr key={l.id}>
+      <td>{l.user_id?.name || "User"}</td>
+      <td>{l.date}</td>
+      <td>{l.task_done}</td>
+      <td>{l.hours_worked}</td>
+      <td className="action-buttons">
+        <button
+          className="btn-sm btn-secondary"
+          onClick={() => openEditTaskModal(l)} // use correct function
+        >
+          Edit
+        </button>
+        <button
+          className="btn-sm btn-danger"
+          onClick={() => deleteLog(l.id)}
+        >
+          Del
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
             </table>
           </div>
         }
