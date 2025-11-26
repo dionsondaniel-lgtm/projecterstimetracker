@@ -1,0 +1,19 @@
+mutation CreateUser($displayName: String!, $email: String!) @auth(level: USER) {
+  user_insert(data: {displayName: $displayName, email: $email, createdAt_expr: "request.time", id_expr: "uuidV4()"})
+}
+
+query ListProjectsForUser @auth(level: USER) {
+  projects(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    name
+    description
+  }
+}
+
+mutation CreateTimeEntry($projectId: UUID!, $taskId: UUID!, $startTime: Timestamp!, $endTime: Timestamp!, $notes: String) @auth(level: USER) {
+  timeEntry_insert(data: {projectId: $projectId, taskId: $taskId, userId_expr: "auth.uid", startTime: $startTime, endTime: $endTime, notes: $notes, createdAt_expr: "request.time", id_expr: "uuidV4()"})
+}
+
+mutation UpdateProject($id: UUID!, $name: String, $description: String, $billingRatePerHour: Float, $status: String) @auth(level: USER) {
+  project_update(id: $id, data: {name: $name, description: $description, billingRatePerHour: $billingRatePerHour, status: $status})
+}

@@ -1,0 +1,33 @@
+type User @table {
+  email: String!
+  displayName: String!
+  createdAt: Timestamp!
+  photoUrl: String
+}
+
+type Project @table {
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  status: String
+  billingRatePerHour: Float
+  user: User
+}
+
+type Task @table {
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  status: String
+  project: Project
+}
+
+type TimeEntry @table {
+  startTime: Timestamp!
+  endTime: Timestamp!
+  createdAt: Timestamp!
+  notes: String
+  user: User
+  task: Task
+  project: Project
+}
