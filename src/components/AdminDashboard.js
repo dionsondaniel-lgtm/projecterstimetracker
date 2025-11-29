@@ -5,19 +5,8 @@ import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import {
-  FaBars,
-  FaUserPlus,
-  FaClock,
-  FaPlus,
-} from "react-icons/fa";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { FaBars, FaUserPlus, FaClock, FaPlus } from "react-icons/fa";
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import TaskModal from "./TaskModal";
 import EditTaskModal from "./EditTaskModal";
 
@@ -26,7 +15,6 @@ dayjs.extend(timezone);
 dayjs.extend(weekOfYear);
 
 export default function AdminDashboard({ toRegister, toDashboard }) {
-  // (same exact state variables as before)
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [allLogs, setAllLogs] = useState([]);
@@ -54,11 +42,15 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
   const [taskDate, setTaskDate] = useState(dayjs().format("YYYY-MM-DD"));
 
   const [runningHours, setRunningHours] = useState([]);
-
   const [editTask, setEditTask] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const [toast, setToast] = useState({ message: "", type: "", visible: false });
+
+  // FILTER INPUT STATES
+  const [inputUser, setInputUser] = useState("");
+  const [inputTask, setInputTask] = useState("");
+  const [inputDate, setInputDate] = useState("");
 
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type, visible: true });
@@ -224,36 +216,51 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
     showToast("Tasks saved");
   };
 
+  // REMEMBER USER
   useEffect(() => {
     if (rememberUser && currentUserId)
       localStorage.setItem("rememberUserId", currentUserId);
     else localStorage.removeItem("rememberUserId");
   }, [rememberUser, currentUserId]);
 
-  const handleSearch = (q) => {
-    const s = q.toLowerCase();
-    setLogs(
-      allLogs.filter(l =>
-        l.user?.name.toLowerCase().includes(s) ||
-        l.task_done.toLowerCase().includes(s) ||
-        l.date.includes(s)
-      )
-    );
+  // ------------------- FILTERS -------------------
+  const applyFilters = () => {
+  let filtered = [...allLogs];
+
+  // Compare inputUser with user_id in logs
+  if (inputUser) {
+    filtered = filtered.filter(l => String(l.user_id) === String(inputUser));
+  }
+  if (inputTask) {
+    filtered = filtered.filter(l => l.task_done.toLowerCase().includes(inputTask.toLowerCase()));
+  }
+  if (inputDate) {
+    filtered = filtered.filter(l => l.date === inputDate);
+  }
+
+  // If no filters and not show all, default to today
+  if (!inputUser && !inputTask && !inputDate && !showAllLogs) {
+    filtered = filtered.filter(l => l.date === today);
+  }
+
+  setLogs(filtered);
+};
+
+  const clearFilters = () => {
+    setInputUser("");
+    setInputTask("");
+    setInputDate("");
+    setLogs(showAllLogs ? allLogs : allLogs.filter(l => l.date === today));
   };
 
   return (
     <div className="page-wrapper">
-
       {/* HEADER */}
       <header className="header">
-        <h1>Projecters Time Tracking</h1>
-        <button
-          className="btn-icon"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-        >
+        <h1>Projecters Time Tracking System</h1>
+        <button className="btn-icon" onClick={() => setDropdownOpen(!dropdownOpen)}>
           <FaBars />
         </button>
-
         {dropdownOpen && (
           <ul className="dropdown">
             <li onClick={() => { toRegister(); setDropdownOpen(false); }}>
@@ -269,7 +276,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
       {/* USER AREA */}
       <section className="card">
         <h2>User Tools</h2>
-
         <div className="row">
           <select
             value={currentUserId}
@@ -279,12 +285,10 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
             <option value="">-- Select user --</option>
             {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-
           <button className="btn-primary" onClick={addTodaysTask}>
             <FaPlus /> Add Today's Task
           </button>
         </div>
-
         <label className="remember">
           <input
             type="checkbox"
@@ -323,12 +327,36 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
       {/* LOGS */}
       <section className="card">
         <div className="row space-between">
+          {/* USER FILTER */}
+          <select
+            className="input"
+            value={inputUser}
+            onChange={(e) => setInputUser(e.target.value)}
+          >
+            <option value="">All Users</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+
+          {/* TASK FILTER */}
           <input
             type="text"
-            placeholder="Search logs..."
+            placeholder="Search by task..."
             className="input"
-            onChange={(e) => handleSearch(e.target.value)}
+            value={inputTask}
+            onChange={(e) => setInputTask(e.target.value)}
           />
+
+          {/* DATE PICKER */}
+          <input
+            type="date"
+            className="input"
+            value={inputDate}
+            onChange={(e) => setInputDate(e.target.value)}
+          />
+
+          <button className="btn-primary" onClick={applyFilters}>Filter</button>
+          <button className="btn-secondary" onClick={clearFilters}>Clear</button>
+
           <span className="small-muted">{logs.length} tasks</span>
         </div>
 
@@ -354,18 +382,8 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
                     <td>{log.task_done}</td>
                     <td>{log.hours_worked}</td>
                     <td className="actions">
-                      <button
-                        className="btn-sm"
-                        onClick={() => updateLog(log)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn-sm danger"
-                        onClick={() => deleteLog(log.id)}
-                      >
-                        Del
-                      </button>
+                      <button className="btn-sm" onClick={() => updateLog(log)}>Edit</button>
+                      <button className="btn-sm danger" onClick={() => deleteLog(log.id)}>Del</button>
                     </td>
                   </tr>
                 ))}
@@ -379,7 +397,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
       <section className="card">
         <h2>World Clock & Rate</h2>
         <div className="grid-2">
-
           <div className="clock-box">
             <h3>🇵🇭 Philippines</h3>
             <h1>{phTime}</h1>
@@ -395,7 +412,6 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
             >
               {timezones.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-
             <h1>{otherTime}</h1>
             <p>{otherDate}</p>
           </div>
@@ -410,9 +426,7 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
           <h1 className="rate">₱{ratePHP}</h1>
         ) : <p>Loading…</p>}
 
-        <button className="btn-primary" onClick={() => fetchExchangeRate(currency)}>
-          Refresh Rate
-        </button>
+        <button className="btn-primary" onClick={() => fetchExchangeRate(currency)}>Refresh Rate</button>
       </section>
 
       {/* MODALS */}
@@ -431,13 +445,10 @@ export default function AdminDashboard({ toRegister, toDashboard }) {
         task={editTask}
         onClose={() => setEditModalOpen(false)}
         onSave={async (update) => {
-          await supabase
-            .from("logs")
-            .update({
-              task_done: update.task_done,
-              hours_worked: Number(update.hours_worked),
-            })
-            .eq("id", update.id);
+          await supabase.from("logs").update({
+            task_done: update.task_done,
+            hours_worked: Number(update.hours_worked),
+          }).eq("id", update.id);
 
           fetchAllLogs();
           showToast("Updated!", "success");

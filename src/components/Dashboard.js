@@ -170,6 +170,71 @@ const handleEditTaskSave = async (updatedEntry) => {
   }
 };
 
+// ------------------- EXPORT ALL LOGS FROM SUPABASE -------------------
+const exportAllLogsFromSupabase = async () => {
+  try {
+    const { data: allLogsData, error } = await supabase
+      .from("logs")
+      .select("*, user_id(name)")
+      .order("date", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching logs:", error);
+      showToast("Error fetching logs from Supabase", "error");
+      return;
+    }
+
+    if (!allLogsData || allLogsData.length === 0) {
+      showToast("No logs found to export", "error");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("All Logs", {
+      views: [{ showGridLines: false }], // no gridlines
+    });
+
+    // Header row
+    sheet.addRow(["User", "Date", "Task", "Hours"]);
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
+    // Add log rows
+    allLogsData.forEach((l) => {
+      sheet.addRow([
+        l.user_id?.name || "User",
+        l.date,
+        l.task_done,
+        l.hours_worked,
+      ]);
+    });
+
+    // Auto-width columns
+    sheet.columns.forEach((col) => {
+      let maxLength = 10;
+      col.eachCell({ includeEmpty: false }, (cell) => {
+        maxLength = Math.max(maxLength, cell.value?.toString().length || 0);
+      });
+      col.width = maxLength + 2;
+    });
+
+    // Filename with timestamp
+    const timestamp = dayjs().format("YYYYMMDD_HHmm");
+    const filename = `AllLogs_${timestamp}.xlsx`;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(
+      new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+      filename
+    );
+
+    showToast("All logs exported successfully", "success");
+  } catch (err) {
+    console.error("Unexpected error exporting logs:", err);
+    showToast("Error exporting logs", "error");
+  }
+};
 
   // ------------------- EXCEL EXPORT -------------------
   const exportExcel = async (mode, config) => {
@@ -446,9 +511,10 @@ const totalHoursToday = logs.reduce(
       </div>
 
       <div className="export-section">
-        <button className="btn-primary" onClick={() => setExcelPromptOpen(true)}>
+        <button className="btn-primary" onClick={exportAllLogsFromSupabase}>
           📊 Export All Logs
         </button>
+
 
         <div className="range-block">
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
